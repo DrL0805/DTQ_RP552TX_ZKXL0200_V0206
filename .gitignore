@@ -1,0 +1,13 @@
+*.a
+*.o
+board/JLinkLog.txt
+board/JLinkSettings.ini
+board/Listings/
+board/Objects/
+board/Outputs/
+board/RTE/
+board/drl51822project.uvguix.Administrator
+board/drl51822project.uvoptx
+board/DTQ_RP551TX_ZKXL0101_V0005.map
+board/Target 1.BAT
+board/arm_startup_nrf51.lst
