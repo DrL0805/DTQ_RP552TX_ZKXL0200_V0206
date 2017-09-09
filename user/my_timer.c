@@ -155,32 +155,7 @@ void return_ack_timer_stop(void)
 
 void return_ack_timer_handler(void * p_context)
 {
-	if(RADIO.ACK.Num)
-	{
-		ack_payload.noack  = true;
-		ack_payload.pipe   = NRF_PIPE;
-		ack_payload.length = 17 + 3 + RADIO.ACK.Num * 4;
-		
-		ack_payload.data[0] = 0x61;
-		memset(ack_payload.data+1, 0x00, 8);				// 目标ID 源ID都为0
-		ack_payload.data[9] = 0x01;
-		ack_payload.data[10] = 0x20;
-		ack_payload.data[11] = 0x00;
-		ack_payload.data[12] = 0x00;
-		ack_payload.data[13] = 0x00;
-		ack_payload.data[14] = 3 + RADIO.ACK.Num*4;			// PackLen
-		ack_payload.data[15] = 0x52;						// DataType = ACK													
-		ack_payload.data[16] = 1 + RADIO.ACK.Num*4;			// DataLen
-		ack_payload.data[17] = RADIO.ACK.Num;				
-		memcpy(ack_payload.data+18, RADIO.ACK.Uid, RADIO.ACK.Num*4);
-		ack_payload.data[ack_payload.length - 2] = XOR_Cal(ack_payload.data+1, ack_payload.length - 3);		
-		ack_payload.data[ack_payload.length - 1] = 0x21;												
-		
-		SE2431L_TxMode();
-		nrf_esb_write_payload(&ack_payload);	
-	
-		RADIO.ACK.Num = 0;
-	}
+
 }
 
 

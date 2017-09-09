@@ -42,7 +42,7 @@ uint32_t my_tx_esb_init(void)
     nrf_esb_config_t nrf_esb_config         = NRF_ESB_DEFAULT_CONFIG;
     nrf_esb_config.protocol                 = NRF_ESB_PROTOCOL_ESB_DPL;
     nrf_esb_config.retransmit_delay         = 600;
-    nrf_esb_config.bitrate                  = NRF_ESB_BITRATE_1MBPS;
+    nrf_esb_config.bitrate                  = NRF_ESB_BITRATE_2MBPS;
     nrf_esb_config.event_handler            = nrf_esb_event_handler;
     nrf_esb_config.mode                     = NRF_ESB_MODE_PTX;
 	nrf_esb_config.selective_auto_ack       = true;	//lj 理解，等于true时，每次发送的时候可选择回不回复ACK
@@ -103,7 +103,7 @@ void RADIO_Init(void)
 	
 	RADIO.TxChannal = 4;
 	RADIO.TxPower = NRF_DEFAULT_TX_POWER;
-
+	
     err_code = my_tx_esb_init();
     APP_ERROR_CHECK(err_code);	
 	
