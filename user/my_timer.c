@@ -99,7 +99,7 @@ void nrf_transmit_timer_handler(void * p_context)
 
 		SE2431L_TxMode();
 		
-		for(i = 0; i < NRF_ENHANCE_TX_NUM; i++)
+//		for(i = 0; i < NRF_ENHANCE_TX_NUM; i++)
 			nrf_esb_write_payload(&tx_payload);
 	}
 	else

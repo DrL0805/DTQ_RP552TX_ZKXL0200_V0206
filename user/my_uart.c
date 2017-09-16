@@ -11,11 +11,11 @@ void debug_uart_init(void)//串口初始化函数
 }	
 
 
-void my_uart_trace_dump(uint8_t * p_buffer, uint32_t len)
+void UART_DEBUG(uint8_t * p_buffer, uint32_t len)
 {
     for (uint32_t index = 0; index <  len; index++)
     {
-        printf(" %02X", p_buffer[index]);
+        printf("%02X ", p_buffer[index]);
     }
     printf("\r\n");
 }

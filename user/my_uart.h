@@ -25,6 +25,6 @@ int fputc(int ch, FILE *f);
 void UART_send_byte(uint8_t byte);
 void UART_Send(uint8_t *Buffer, uint32_t Length);
 uint8_t UART_Recive(void);
-void my_uart_trace_dump(uint8_t * p_buffer, uint32_t len);
+void UART_DEBUG(uint8_t * p_buffer, uint32_t len);
 
 #endif /* __UART_H */

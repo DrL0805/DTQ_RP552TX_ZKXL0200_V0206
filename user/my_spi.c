@@ -1,7 +1,6 @@
 #include "my_spi.h"
 
-//#define SPI_DEBUG
-
+#define SPI_DEBUG
 #ifdef SPI_DEBUG
 #define spi_debug  printf   
 #else  
@@ -120,6 +119,13 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 			break;
 		case NRF_DRV_SPIS_XFER_DONE:
 
+//			UART_DEBUG(m_rx_buf, event.rx_amount);			
+//			spi_debug("%02X \r\n",m_rx_buf[5]);				// 频点
+//			if(m_rx_buf[5] == 0xff)
+//			{
+//			while(1);
+//			}
+			
 			if( (0x86              == m_rx_buf[0])       &&
 				(0x76              == m_rx_buf[event.rx_amount - 1]) &&
 				m_rx_buf[event.rx_amount - 2] == XOR_Cal(m_rx_buf+1, event.rx_amount - 3) )
@@ -145,7 +151,7 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 								nrf_esb_get_rf_channel(&TmpChannal);	
 							}while((TmpChannal != RADIO.TxChannal) && (++i < 0x0FFF));													
 							spi_slave_tx_buffers_init(SPI_CMD_SET_CHANNAL);	
-							spi_trigger_irq();				
+							SPI.SpiTriggerIrqFlg = true;				
 						}					
 						break;
 					case SPI_CMD_GET_STATE:						
@@ -162,7 +168,8 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 									4：DataType，有效数据/ack/是否需要发送前导帧
 									5：发送频点
 									6~之后：需发送的2.4G数据
-						*/		
+						*/
+//						spi_debug("%02X \r\n",SPI.RX.CmdData[1]);					
 						switch(SPI.RX.CmdData[0])
 						{
 							case RADIO_TYPE_USE_NEED_PRE:	
@@ -183,7 +190,7 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 								break;
 						}
 						spi_slave_tx_buffers_init(SPI_CMD_SEND_24G_DATA);
-						spi_trigger_irq();			
+						SPI.SpiTriggerIrqFlg = true;					
 						break;
 					default:
 						break;
@@ -191,6 +198,13 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 			}
 			// SPIS每次收发完数据后需要重新SET下
 			nrf_drv_spis_buffers_set(&spis,m_tx_buf,TX_BUF_SIZE,m_rx_buf,RX_BUF_SIZE);
+			
+			// nrf_drv_spis_buffers_set完后，再通知stm32读取新的spi数据
+			if(SPI.SpiTriggerIrqFlg)
+			{
+				SPI.SpiTriggerIrqFlg = false;
+				spi_trigger_irq();			
+			}
 			break;
 		case NRF_DRV_SPIS_EVT_TYPE_MAX:
 			

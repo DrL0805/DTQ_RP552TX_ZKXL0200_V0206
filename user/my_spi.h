@@ -40,7 +40,7 @@ typedef struct
 typedef struct
 {
 	SPI_CMD_FORMAT_T		RX;
-
+	bool					SpiTriggerIrqFlg;
 }SPI_PARAMETERS_T;
 
 
