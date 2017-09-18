@@ -7,7 +7,7 @@
 #include <string.h>
 #include "nrf_delay.h"
  
-#define		MAX_STORE_NUM	(10)
+#define		MAX_STORE_NUM	(20)
 #define		BUFF_LENGTH		(250)
 
 #define BUFF_EMPTY          (1)

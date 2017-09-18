@@ -121,10 +121,7 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 
 //			UART_DEBUG(m_rx_buf, event.rx_amount);			
 //			spi_debug("%02X \r\n",m_rx_buf[5]);				// 频点
-//			if(m_rx_buf[5] == 0xff)
-//			{
-//			while(1);
-//			}
+			
 			
 			if( (0x86              == m_rx_buf[0])       &&
 				(0x76              == m_rx_buf[event.rx_amount - 1]) &&
@@ -138,6 +135,9 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 				SPI.RX.Xor 			= m_rx_buf[4+SPI.RX.CmdLen];
 				SPI.RX.End 			= m_rx_buf[5+SPI.RX.CmdLen];
 
+//				UART_DEBUG(m_rx_buf, 6);
+//				UART_DEBUG(m_rx_buf, 30);	
+				
 				switch(SPI.RX.CmdType)
 				{
 					case SPI_CMD_SET_CHANNAL:					
@@ -169,7 +169,8 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 									5：发送频点
 									6~之后：需发送的2.4G数据
 						*/
-//						spi_debug("%02X \r\n",SPI.RX.CmdData[1]);					
+//					spi_debug("%02X: %02X\r\n",SPI.RX.CmdData[1],SPI.RX.CmdLen);	
+						
 						switch(SPI.RX.CmdData[0])
 						{
 							case RADIO_TYPE_USE_NEED_PRE:	
@@ -178,6 +179,10 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 								{
 									ringbuf_write_data(m_rx_buf,event.rx_amount);
 									spi_slave_tx_buffers_init(SPI_CMD_SEND_24G_DATA);														
+								}
+								else
+								{
+//									spi_debug("BUFF_FULL \r\n");					
 								}
 								break;
 							case RADIO_TYPE_INSTANT_ACK:
@@ -258,11 +263,13 @@ void spi_rx_data_handler(void)
 	RADIO.TxChannal  = tmp_ringbuf_buf[5];
 	
 	// 设置发送的频点
-	do
-	{
-		nrf_esb_set_rf_channel(RADIO.TxChannal);	
-		nrf_esb_get_rf_channel(&TmpChannal);	
-	}while((TmpChannal != RADIO.TxChannal) && (++i < 0x0FFF));		
+//	do
+//	{
+//		nrf_esb_set_rf_channel(RADIO.TxChannal);	
+//		nrf_esb_get_rf_channel(&TmpChannal);	
+//	}while((TmpChannal != RADIO.TxChannal) && (++i < 0x0FFF));		
+	
+//	spi_debug("%02X \r\n",RADIO.TxChannal);		
 	
 	switch(tmp_ringbuf_buf[4])
 	{

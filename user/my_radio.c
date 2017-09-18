@@ -156,8 +156,12 @@ void RADIO_SendAck(uint8_t* UidBuf, uint8_t UidNum, uint32_t TxChannal)
 	
 	nrf_esb_set_rf_channel(TxChannal);
 	
+//	printf("A \r\n");
+	
 	SE2431L_TxMode();
 	nrf_esb_write_payload(&ack_payload);
+//	nrf_esb_write_payload(&ack_payload);
+	
 	
 }
 
@@ -172,6 +176,8 @@ void RADIO_SendData(uint8_t* DataBuf, uint8_t DataLen, uint8_t TxChannal)
 	nrf_esb_set_rf_channel(TxChannal);	
 	
 	SE2431L_TxMode();
+	
+//	printf("%d \r\n",tx_payload.length);
 	
 	nrf_esb_write_payload(&tx_payload);
 }
