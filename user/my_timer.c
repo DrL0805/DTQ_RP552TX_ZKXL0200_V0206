@@ -87,22 +87,14 @@ void nrf_transmit_timeout_stop(void)
 
 void nrf_transmit_timer_handler(void * p_context)
 {
-	uint8_t i;
-	uint8_t TmpAckBuf[32], TmpAckLen;
+	uint8_t TmpPreBuf[32], TmpPreLen;
 	
 	// 如果前导帧已发满NRF_PRE_TX_NUMBER次，开始发有效数据
 	if(++RADIO.PreCnt > NRF_PRE_TX_NUMBER)
 	{
 		nrf_transmit_timeout_stop();
-		RADIO.BusyFlg = false;
 		
-//		tx_payload.length = RADIO.TX.Len;
-//		memcpy(tx_payload.data, RADIO.TX.Data, tx_payload.length);		// Head~ExtendLen
-
-//		SE2431L_TxMode();
-//		nrf_esb_set_rf_channel(RADIO.TxChannal);
-//		
-//		nrf_esb_write_payload(&tx_payload);
+		RADIO.BusyFlg = false;
 		
 		// 把需要发送的数据存入缓冲区中，等待硬件资源空闲后发送
 		if(RINGBUF_GetStatus() != RINGBUF_STATUS_FULL)
@@ -112,25 +104,20 @@ void nrf_transmit_timer_handler(void * p_context)
 	}
 	else
 	{
-		TmpAckLen = 20;
+		TmpPreLen = 20;
 		
-		memcpy(TmpAckBuf, &RADIO.TX.Data, 14);								// Head~ExtendLen
-		TmpAckBuf[14] = 3;														// 包长
-		TmpAckBuf[15] = 0x51;														
-		TmpAckBuf[16] = 0x01;
-		TmpAckBuf[17] = RADIO.PreCnt;
-		TmpAckBuf[TmpAckLen - 2] = XOR_Cal(TmpAckBuf+1, 17);		// 校验
-		TmpAckBuf[TmpAckLen - 1] = 0x21;									// 包尾	
-		
-//		printf("%02X \r\n",RADIO.TxChannal);
-//		SE2431L_TxMode();
-//		nrf_esb_set_rf_channel(RADIO.TxChannal);	
-//		nrf_esb_write_payload(&tx_payload);
+		memcpy(TmpPreBuf, &RADIO.TX.Data, 14);								// Head~ExtendLen
+		TmpPreBuf[14] = 3;													// 包长
+		TmpPreBuf[15] = 0x51;														
+		TmpPreBuf[16] = 0x01;
+		TmpPreBuf[17] = RADIO.PreCnt;
+		TmpPreBuf[TmpPreLen - 2] = XOR_Cal(TmpPreBuf+1, 17);				// 校验
+		TmpPreBuf[TmpPreLen - 1] = 0x21;									// 包尾	
 		
 		// 把需要发送的数据存入缓冲区中，等待硬件资源空闲后发送
 		if(RINGBUF_GetStatus() != RINGBUF_STATUS_FULL)
 		{
-			RINGBUF_WriteData_nRF(TmpAckBuf, TmpAckLen, RADIO.TxChannal);													
+			RINGBUF_WriteData_nRF(TmpPreBuf, TmpPreLen, RADIO.TxChannal);													
 		}		
 	}
 }

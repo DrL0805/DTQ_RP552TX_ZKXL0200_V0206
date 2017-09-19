@@ -9,10 +9,8 @@
 #endif 
 
 nrf_esb_payload_t        tx_payload;
-nrf_esb_payload_t        ack_payload;
 
 RADIO_PARAMETERS_T 		RADIO;
-
 
 void nrf_esb_event_handler(nrf_esb_evt_t const * p_event)
 {
@@ -66,43 +64,12 @@ uint32_t my_tx_esb_init(void)
     return err_code;
 }
 
-uint32_t my_rx_esb_init(void)
-{
-	uint32_t err_code;
-	uint8_t base_addr_0[4] = {0xE7, 0xE7, 0xE7, 0xE7};
-	uint8_t addr_prefix[8] = {0xE7, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8 };
-
-	nrf_esb_config_t nrf_esb_config         = NRF_ESB_DEFAULT_CONFIG;
-	nrf_esb_config.protocol                 = NRF_ESB_PROTOCOL_ESB_DPL;
-	nrf_esb_config.retransmit_delay         = 600;
-	nrf_esb_config.bitrate                  = NRF_ESB_BITRATE_1MBPS;
-	nrf_esb_config.event_handler            = nrf_esb_event_handler;
-	nrf_esb_config.mode                     = NRF_ESB_MODE_PRX;
-	nrf_esb_config.selective_auto_ack       = true;	
-	nrf_esb_config.payload_length           = 250;
-
-	err_code = nrf_esb_set_rf_channel(2);		//注意：答题器发送频点61接收频点21，接收器相反
-	VERIFY_SUCCESS(err_code);
-	
-	err_code = nrf_esb_init(&nrf_esb_config);
-	VERIFY_SUCCESS(err_code);
-
-	err_code = nrf_esb_set_base_address_0(base_addr_0);
-	VERIFY_SUCCESS(err_code);
-
-	err_code = nrf_esb_set_prefixes(addr_prefix, 8);
-	VERIFY_SUCCESS(err_code);
-
-	return err_code;
-}
-
 
 void RADIO_Init(void)
 {
 	ret_code_t err_code;
-	
-	
-	RADIO.TxChannal = 4;
+
+	RADIO.TxChannal = NRF_DEFAULT_TX_CHANNAL;
 	RADIO.TxPower = NRF_DEFAULT_TX_POWER;
 	
     err_code = my_tx_esb_init();
@@ -136,58 +103,35 @@ void RADIO_SendAck(uint8_t* UidBuf, uint8_t UidNum, uint32_t TxChannal)
 		XX：校验
 		XX：包尾0x21
 	*/
-	ack_payload.noack  = true;
-	ack_payload.pipe   = NRF_PIPE;
-	ack_payload.length = 17 + 3 + UidNum * 4;
+	uint8_t TmpAckBuf[256], TmpAckLen;
 	
-	ack_payload.data[0] = 0x61;
-	memset(ack_payload.data+1, 0x00, 8);			// 目标ID 源ID都为0
-	ack_payload.data[9] = 0x01;
-	ack_payload.data[10] = 0x20;
-	ack_payload.data[11] = 0x00;
-	ack_payload.data[12] = 0x00;
-	ack_payload.data[13] = 0x00;
-	ack_payload.data[14] = 3 + UidNum*4;			// PackLen
-	ack_payload.data[15] = 0x52;						// DataType = ACK													
-	ack_payload.data[16] = 1 + UidNum*4;			// DataLen
-	ack_payload.data[17] = UidNum;				
-	memcpy(ack_payload.data+18, UidBuf, UidNum*4);
-	ack_payload.data[ack_payload.length - 2] = XOR_Cal(ack_payload.data+1, ack_payload.length - 3);		
-	ack_payload.data[ack_payload.length - 1] = 0x21;												
+	TmpAckLen = 17 + 3 + UidNum * 4;
 	
-	nrf_esb_set_rf_channel(TxChannal);
-	
-//	printf("A \r\n");
-	
-	SE2431L_TxMode();
-	nrf_esb_write_payload(&ack_payload);
-//	nrf_esb_write_payload(&ack_payload);
-	
-	
-}
+	TmpAckBuf[0] = 0x61;
+	memset(TmpAckBuf+1, 0x00, 8);			// 目标ID 源ID都为0
+	TmpAckBuf[9] = 0x01;
+	TmpAckBuf[10] = 0x20;
+	TmpAckBuf[11] = 0x00;
+	TmpAckBuf[12] = 0x00;
+	TmpAckBuf[13] = 0x00;
+	TmpAckBuf[14] = 3 + UidNum*4;			// PackLen
+	TmpAckBuf[15] = 0x52;					// DataType = ACK													
+	TmpAckBuf[16] = 1 + UidNum*4;			// DataLen
+	TmpAckBuf[17] = UidNum;				
+	memcpy(TmpAckBuf+18, UidBuf, UidNum*4);
+	TmpAckBuf[TmpAckLen - 2] = XOR_Cal(TmpAckBuf+1, TmpAckLen - 3);		
+	TmpAckBuf[TmpAckLen - 1] = 0x21;												
 
-void RADIO_SendData(uint8_t* DataBuf, uint8_t DataLen, uint8_t TxChannal)
-{
-	tx_payload.noack  = true;
-	tx_payload.pipe   = NRF_PIPE;
-	tx_payload.length = DataLen;
-	
-	memcpy(tx_payload.data, DataBuf, DataLen);
-	
-	nrf_esb_set_rf_channel(TxChannal);	
-	
-	SE2431L_TxMode();
-	
-//	printf("%d \r\n",tx_payload.length);
-	
-	nrf_esb_write_payload(&tx_payload);
+	if(RINGBUF_GetStatus_nRF() != RINGBUF_STATUS_FULL_nRF)
+	{
+		RINGBUF_WriteData_nRF(TmpAckBuf, TmpAckLen, TxChannal);													
+	}	
 }
 
 
 void RADIO_SendHandler(void)
 {
 	uint8_t TmpChannal;
-	
 	
 	// 如果RADIO硬件资源不被占用，则发送RingBuffer里的数据
 	if(!RADIO.HardTxBusyFlg)
@@ -201,7 +145,7 @@ void RADIO_SendHandler(void)
 			
 			SE2431L_TxMode();
 			nrf_esb_set_rf_channel(TmpChannal);
-			
+
 			nrf_esb_write_payload(&tx_payload);	
 			RADIO.HardTxBusyFlg = true;
 		}		

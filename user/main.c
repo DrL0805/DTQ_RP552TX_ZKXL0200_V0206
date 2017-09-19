@@ -23,7 +23,6 @@ int main (void)
 
 	rtc_calibrate_timeout_start();			//RTC校准定时器
 
-//	TIMER_TxOvertimeStart();
 	
 	printf("sys init ok \r\n");	
 	

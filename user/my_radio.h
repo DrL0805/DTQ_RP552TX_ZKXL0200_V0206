@@ -11,6 +11,7 @@
 #define      NRF_DATA_RESERVE					(0xFF)			  	//保留位默认值
 #define 	 NRF_PRE_TX_NUMBER					(110)				//前导帧发送次数
 #define 	 NRF_ENHANCE_TX_NUM					(2)					// 加强帧发送次数（总发送次数）
+#define      NRF_DEFAULT_TX_CHANNAL				(4)
 #define      NRF_DEFAULT_TX_POWER				(NRF_ESB_TX_POWER_4DBM)
 #define		 NRF_LINK_DATA_LEN				(17)		// 链路层定义数据长度
 
@@ -52,10 +53,8 @@ extern nrf_esb_payload_t        ack_payload;
 extern RADIO_PARAMETERS_T 		RADIO;
 
 extern uint32_t my_tx_esb_init(void);
-extern uint32_t my_rx_esb_init(void);
 extern void RADIO_Init(void);
 extern void RADIO_SendAck(uint8_t* UidBuf, uint8_t UidNum, uint32_t TxChannal);
-extern void RADIO_SendData(uint8_t* DataBuf, uint8_t DataLen, uint8_t TxChannal);
 void RADIO_SendHandler(void);
 #endif 
 

@@ -109,18 +109,24 @@ void spi_trigger_irq(void)
 
 void spis_event_handler(nrf_drv_spis_event_t event)
 {
-	uint32_t i = 0;
-	
-	uint32_t TmpChannal = 0;
-	
+
 	switch(event.evt_type)
 	{
 		case NRF_DRV_SPIS_BUFFERS_SET_DONE:
 			break;
 		case NRF_DRV_SPIS_XFER_DONE:
 
-//			UART_DEBUG(m_rx_buf, event.rx_amount);			
-//			spi_debug("%02X \r\n",m_rx_buf[5]);							// 频点
+			/*
+				SPI层数据格式：
+					0：		Head固定 0x86
+					1：		DevId
+					2：		CmdType
+					3：		CmdLen
+					4~之后：CmdData
+						4：DataType，有效数据/ack/是否需要发送前导帧
+						5：发送频点
+						6~之后：需发送的2.4G数据
+			*/	
 			
 			//包头、包尾、数据类型、XOR校验
 			if( (0x86              == m_rx_buf[0])       &&
@@ -128,6 +134,7 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 				(0x76              == m_rx_buf[event.rx_amount - 1]) &&				
 				m_rx_buf[event.rx_amount - 2] == XOR_Cal(m_rx_buf+1, event.rx_amount - 3) )
 			{
+			
 				SPI.RX.Head 		= m_rx_buf[0];
 				SPI.RX.DevId 		= m_rx_buf[1];	
 				SPI.RX.CmdType 		= m_rx_buf[2];	
@@ -161,24 +168,11 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 					case SPI_CMD_GET_STATE:						
 						spi_slave_tx_buffers_init(SPI_CMD_GET_STATE);	
 						break;
-					case SPI_CMD_SEND_24G_DATA:	
-						/*
-							SPI层数据格式：
-								0：		Head固定 0x86
-								1：		DevId
-								2：		CmdType
-								3：		CmdLen
-								4~之后：CmdData
-									4：DataType，有效数据/ack/是否需要发送前导帧
-									5：发送频点
-									6~之后：需发送的2.4G数据
-						*/
-//					spi_debug("%02X: %02X\r\n",SPI.RX.CmdData[1],SPI.RX.CmdLen);							
+					case SPI_CMD_SEND_24G_DATA:							
 						switch(SPI.RX.CmdData[0])
 						{
 							case RADIO_TYPE_USE_NEED_PRE:
 							case RADIO_TYPE_USE_NEEDLESS_PRE:
-//								printf("U1 %02X \r\n",SPI.RX.CmdData[1]);
 								if(RINGBUF_GetStatus() != RINGBUF_STATUS_FULL)
 								{
 									RINGBUF_WriteData(m_rx_buf,event.rx_amount);
@@ -186,10 +180,13 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 								}
 								break;
 							case RADIO_TYPE_INSTANT_ACK:
-//								RADIO_SendAck(SPI.RX.CmdData+20, 1, SPI.RX.CmdData[1]);							
+								RADIO_SendAck(SPI.RX.CmdData+20, 1, SPI.RX.CmdData[1]);									
 								break;							
 							case RADIO_TYPE_INSTANT_USE:
-//								RADIO_SendData(SPI.RX.CmdData+2, SPI.RX.CmdLen - 2, SPI.RX.CmdData[1]);
+								if(RINGBUF_GetStatus_nRF() != RINGBUF_STATUS_FULL_nRF)
+								{
+									RINGBUF_WriteData_nRF(SPI.RX.CmdData+2, SPI.RX.CmdLen-2, SPI.RX.CmdData[1]);													
+								}							
 								break;
 							default:
 								break;
@@ -239,7 +236,6 @@ void my_spi_slave_init(void)
 
 void SPI_DataHandler(void)
 {
-	uint32_t TmpChannal, i;
 	uint8_t tmp_ringbuf_len = 0;
 	uint8_t tmp_ringbuf_buf[255];
 	/*
