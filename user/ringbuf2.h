@@ -7,24 +7,28 @@
 #include <string.h>
 #include "nrf_delay.h"
  
-#define		MAX_STORE_NUM	(20)
-#define		BUFF_LENGTH		(250)
+#define 	RINGBUF_STATUS_EMPTY       			(1)
+#define 	RINGBUF_STATUS_USEING         		(2)
+#define 	RINGBUF_STATUS_FULL           		(3) 
+ 
+// SPI
+#define		RINGBUF_MAX_NUM_SPI		(10)
+#define		RINGBUF_LENGTH_SPI		(256)
 
-#define BUFF_EMPTY          (1)
-#define BUFF_USEING         (2)
-#define BUFF_FULL           (3)
+// 2.4G·¢ËÍ
+#define		RINGBUF_MAX_NUM_NRF		(10)
+#define		RINGBUF_LENGTH_NRF		(256)
 
 typedef struct
 {
 	uint8_t		length;
-	uint8_t		data[BUFF_LENGTH];		
-}dynamic_store_t;
+	uint8_t		data[RINGBUF_LENGTH_SPI];		
+}SPI_RINGBUF_STORE_T;
 
-uint8_t get_ringbuf_status(void);
-void ringbuf_write_data(uint8_t *buff, uint8_t buff_len);
-void ringbuf_read_data(uint8_t *buff, uint8_t *buff_len);
-void ringbuf_test2(void);
-void read_ringbuf_use_num(void);
+uint8_t RINGBUF_GetStatus(void);
+void RINGBUF_WriteData(uint8_t *buff, uint8_t buff_len);
+void RINGBUF_ReadData(uint8_t *buff, uint8_t *buff_len);
+void RINGBUF_UseRate(void);
 
 
 #endif 

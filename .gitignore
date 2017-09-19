@@ -1,5 +1,7 @@
 *.a
 *.o
+*.map
+*.TMP
 board/JLinkLog.txt
 board/JLinkSettings.ini
 board/Listings/

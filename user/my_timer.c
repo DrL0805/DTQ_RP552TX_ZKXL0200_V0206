@@ -14,13 +14,13 @@
 #define TEMP_TIMEOUT_INTERVAL     			APP_TIMER_TICKS(10000, 	APP_TIMER_PRESCALER)
 #define NRF_TRANSMIT_TIMEOUT_INTERVAL     	APP_TIMER_TICKS(50, 	APP_TIMER_PRESCALER)
 #define SPI_OVERTIME_TIMEOUT_INTERVAL     	APP_TIMER_TICKS(100, 	APP_TIMER_PRESCALER)
-#define RETURN_ACK_TIMEOUT_INTERVAL     	APP_TIMER_TICKS(5, 	APP_TIMER_PRESCALER)
+#define TX_OVERTIME_TIMEOUT_INTERVAL     	APP_TIMER_TICKS(100, 	APP_TIMER_PRESCALER)
 
 
 APP_TIMER_DEF(temp_timer_id);
 APP_TIMER_DEF(spi_overtime_timer_id);	
 APP_TIMER_DEF(nrf_transmit_timer_id);
-APP_TIMER_DEF(return_ack_timer_id);
+APP_TIMER_DEF(tx_overtime_timer_id);
 
 
 void timers_init(void)
@@ -35,14 +35,14 @@ void timers_init(void)
 	// 循环的定时器
 	err_code = app_timer_create(&nrf_transmit_timer_id,APP_TIMER_MODE_REPEATED,nrf_transmit_timer_handler);
 	APP_ERROR_CHECK(err_code);
-	
-	err_code = app_timer_create(&return_ack_timer_id,APP_TIMER_MODE_REPEATED,return_ack_timer_handler);
-	APP_ERROR_CHECK(err_code);	
+
 	
 	// 仅一次的定时器
 	err_code = app_timer_create(&spi_overtime_timer_id,APP_TIMER_MODE_SINGLE_SHOT,spi_overtime_timer_handler);
 	APP_ERROR_CHECK(err_code);
-
+	
+	err_code = app_timer_create(&tx_overtime_timer_id,APP_TIMER_MODE_SINGLE_SHOT,TIMER_TxOvertimeHandler);
+	APP_ERROR_CHECK(err_code);	
 }
 
 void rtc_calibrate_timeout_start(void)
@@ -88,41 +88,50 @@ void nrf_transmit_timeout_stop(void)
 void nrf_transmit_timer_handler(void * p_context)
 {
 	uint8_t i;
+	uint8_t TmpAckBuf[32], TmpAckLen;
+	
 	// 如果前导帧已发满NRF_PRE_TX_NUMBER次，开始发有效数据
 	if(++RADIO.PreCnt > NRF_PRE_TX_NUMBER)
 	{
 		nrf_transmit_timeout_stop();
 		RADIO.BusyFlg = false;
 		
-		tx_payload.length = RADIO.TX.Len;
-		memcpy(tx_payload.data, RADIO.TX.Data, tx_payload.length);								// Head~ExtendLen
+//		tx_payload.length = RADIO.TX.Len;
+//		memcpy(tx_payload.data, RADIO.TX.Data, tx_payload.length);		// Head~ExtendLen
 
-//		printf("%02X \r\n",RADIO.TxChannal);
-		SE2431L_TxMode();
-		nrf_esb_set_rf_channel(RADIO.TxChannal);
-
-//		if(tx_payload.data[15] == 0x41)
-//			printf("G \r\n");
+//		SE2431L_TxMode();
+//		nrf_esb_set_rf_channel(RADIO.TxChannal);
+//		
+//		nrf_esb_write_payload(&tx_payload);
 		
-//		for(i = 0; i < NRF_ENHANCE_TX_NUM; i++)
-			nrf_esb_write_payload(&tx_payload);
+		// 把需要发送的数据存入缓冲区中，等待硬件资源空闲后发送
+		if(RINGBUF_GetStatus() != RINGBUF_STATUS_FULL)
+		{
+			RINGBUF_WriteData_nRF(RADIO.TX.Data, RADIO.TX.Len, RADIO.TxChannal);													
+		}		
 	}
 	else
 	{
-		tx_payload.length = 20;
+		TmpAckLen = 20;
 		
-		memcpy(tx_payload.data, &RADIO.TX.Data, 14);								// Head~ExtendLen
-		tx_payload.data[14] = 3;														// 包长
-		tx_payload.data[15] = 0x51;														
-		tx_payload.data[16] = 0x01;
-		tx_payload.data[17] = RADIO.PreCnt;
-		tx_payload.data[tx_payload.length - 2] = XOR_Cal(tx_payload.data+1, 17);		// 校验
-		tx_payload.data[tx_payload.length - 1] = 0x21;									// 包尾	
+		memcpy(TmpAckBuf, &RADIO.TX.Data, 14);								// Head~ExtendLen
+		TmpAckBuf[14] = 3;														// 包长
+		TmpAckBuf[15] = 0x51;														
+		TmpAckBuf[16] = 0x01;
+		TmpAckBuf[17] = RADIO.PreCnt;
+		TmpAckBuf[TmpAckLen - 2] = XOR_Cal(TmpAckBuf+1, 17);		// 校验
+		TmpAckBuf[TmpAckLen - 1] = 0x21;									// 包尾	
 		
 //		printf("%02X \r\n",RADIO.TxChannal);
-		SE2431L_TxMode();
-		nrf_esb_set_rf_channel(RADIO.TxChannal);	
-		nrf_esb_write_payload(&tx_payload);
+//		SE2431L_TxMode();
+//		nrf_esb_set_rf_channel(RADIO.TxChannal);	
+//		nrf_esb_write_payload(&tx_payload);
+		
+		// 把需要发送的数据存入缓冲区中，等待硬件资源空闲后发送
+		if(RINGBUF_GetStatus() != RINGBUF_STATUS_FULL)
+		{
+			RINGBUF_WriteData_nRF(TmpAckBuf, TmpAckLen, RADIO.TxChannal);													
+		}		
 	}
 }
 
@@ -146,23 +155,24 @@ void spi_overtime_timer_handler(void * p_context)
 	
 }
 
-void return_ack_timer_start(void)
+void TIMER_TxOvertimeStart(void)
 {
 	uint32_t err_code;
-	err_code = app_timer_start(return_ack_timer_id,RETURN_ACK_TIMEOUT_INTERVAL,NULL);
+	err_code = app_timer_start(tx_overtime_timer_id,TX_OVERTIME_TIMEOUT_INTERVAL,NULL);
 	APP_ERROR_CHECK(err_code);
 }
 
-void return_ack_timer_stop(void)
+void TIMER_TxOvertimeStop(void)
 {
 	uint32_t err_code;
-	err_code = app_timer_stop(return_ack_timer_id);
+	err_code = app_timer_stop(tx_overtime_timer_id);
 	APP_ERROR_CHECK(err_code);
 }
 
-void return_ack_timer_handler(void * p_context)
+void TIMER_TxOvertimeHandler(void * p_context)
 {
-
+//	printf("r \r\n");
+	RADIO.HardTxBusyFlg = false;
 }
 
 

@@ -21,7 +21,8 @@ void nrf_esb_event_handler(nrf_esb_evt_t const * p_event)
         case NRF_ESB_EVENT_TX_SUCCESS:
 			if(0 == get_tx_fifo_count())
 			{
-				SE2431L_SleepMode();
+				SE2431L_SleepMode();		
+				RADIO.HardTxBusyFlg = false;
 			}
             break;
         case NRF_ESB_EVENT_TX_FAILED:
@@ -182,6 +183,30 @@ void RADIO_SendData(uint8_t* DataBuf, uint8_t DataLen, uint8_t TxChannal)
 	nrf_esb_write_payload(&tx_payload);
 }
 
+
+void RADIO_SendHandler(void)
+{
+	uint8_t TmpChannal;
+	
+	
+	// 如果RADIO硬件资源不被占用，则发送RingBuffer里的数据
+	if(!RADIO.HardTxBusyFlg)
+	{
+		if((RINGBUF_GetStatus_nRF() != RINGBUF_STATUS_EMPTY_nRF))
+		{
+			RINGBUF_ReadData_nRF(tx_payload.data, &tx_payload.length, &TmpChannal);
+
+//			printf("Channal:%02X, Len:%02X \r\n", TmpChannal, tx_payload.length);
+//			UART_DEBUG(tx_payload.data, tx_payload.length);
+			
+			SE2431L_TxMode();
+			nrf_esb_set_rf_channel(TmpChannal);
+			
+			nrf_esb_write_payload(&tx_payload);	
+			RADIO.HardTxBusyFlg = true;
+		}		
+	}
+}
 
 
 

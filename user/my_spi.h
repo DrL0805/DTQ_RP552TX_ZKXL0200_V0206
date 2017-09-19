@@ -54,7 +54,7 @@ extern SPI_PARAMETERS_T		SPI;
 void my_spi_slave_init(void);
 void spi_gpio_init(void);
 void spi_trigger_irq(void);
-void spi_rx_data_handler(void);
+void SPI_DataHandler(void);
 	
 #endif
 

@@ -173,30 +173,23 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 									5：发送频点
 									6~之后：需发送的2.4G数据
 						*/
-//					spi_debug("%02X: %02X\r\n",SPI.RX.CmdData[1],SPI.RX.CmdLen);	
-						
+//					spi_debug("%02X: %02X\r\n",SPI.RX.CmdData[1],SPI.RX.CmdLen);							
 						switch(SPI.RX.CmdData[0])
 						{
 							case RADIO_TYPE_USE_NEED_PRE:
 							case RADIO_TYPE_USE_NEEDLESS_PRE:
 //								printf("U1 %02X \r\n",SPI.RX.CmdData[1]);
-								if(get_ringbuf_status() != BUFF_FULL)
+								if(RINGBUF_GetStatus() != RINGBUF_STATUS_FULL)
 								{
-									ringbuf_write_data(m_rx_buf,event.rx_amount);
+									RINGBUF_WriteData(m_rx_buf,event.rx_amount);
 									spi_slave_tx_buffers_init(SPI_CMD_SEND_24G_DATA);														
-								}
-								else
-								{
-//									spi_debug("BUFF_FULL \r\n");					
 								}
 								break;
 							case RADIO_TYPE_INSTANT_ACK:
-//								printf("A %02X \r\n",SPI.RX.CmdData[1]);
-								RADIO_SendAck(SPI.RX.CmdData+20, 1, SPI.RX.CmdData[1]);							
+//								RADIO_SendAck(SPI.RX.CmdData+20, 1, SPI.RX.CmdData[1]);							
 								break;							
 							case RADIO_TYPE_INSTANT_USE:
-//								printf("U2 %02X \r\n",SPI.RX.CmdData[1]);
-								RADIO_SendData(SPI.RX.CmdData+2, SPI.RX.CmdLen - 2, SPI.RX.CmdData[1]);
+//								RADIO_SendData(SPI.RX.CmdData+2, SPI.RX.CmdLen - 2, SPI.RX.CmdData[1]);
 								break;
 							default:
 								break;
@@ -244,15 +237,11 @@ void my_spi_slave_init(void)
 	APP_ERROR_CHECK(nrf_drv_spis_buffers_set(&spis,m_tx_buf,TX_BUF_SIZE,m_rx_buf,RX_BUF_SIZE));
 }
 
-void spi_rx_data_handler(void)
+void SPI_DataHandler(void)
 {
 	uint32_t TmpChannal, i;
 	uint8_t tmp_ringbuf_len = 0;
 	uint8_t tmp_ringbuf_buf[255];
-	
-	// 从缓冲区中读取收到的SPI数据
-	ringbuf_read_data(tmp_ringbuf_buf,&tmp_ringbuf_len);
-	
 	/*
 		SPI层数据格式：
 			0：		Head固定 0x86
@@ -264,31 +253,41 @@ void spi_rx_data_handler(void)
 				5：发送频点
 				6~之后：需发送的2.4G数据
 	*/
-	RADIO.TX.Len = tmp_ringbuf_buf[3] - 2;
-	memcpy(RADIO.TX.Data, tmp_ringbuf_buf+6, RADIO.TX.Len);
+	
+	if(!RADIO.BusyFlg)				// RADIO系统空闲
+	{			
+		if((RINGBUF_GetStatus() != RINGBUF_STATUS_EMPTY))
+		{
+			// 从缓冲区中读取收到的SPI数据
+			RINGBUF_ReadData(tmp_ringbuf_buf,&tmp_ringbuf_len);
 
-	RADIO.TxChannal  = tmp_ringbuf_buf[5];
-	
-//	printf("%02X \r\n",RADIO.TxChannal);
-	
-	switch(tmp_ringbuf_buf[4])
-	{
-		case RADIO_TYPE_USE_NEED_PRE:	// 有效数据，需发前导帧
-			RADIO.BusyFlg = true;
-			RADIO.PreCnt = 0;
-			nrf_transmit_timeout_start(1);
-			break;
-		case RADIO_TYPE_USE_NEEDLESS_PRE:	// 有效数据，无需发前导帧 
-			RADIO.BusyFlg = true;
-			RADIO.PreCnt = NRF_PRE_TX_NUMBER;
-			nrf_transmit_timeout_start(1);
-			break;
-		case RADIO_TYPE_INSTANT_ACK:	// ACK
-			break;
-		case RADIO_TYPE_INSTANT_USE:	// 需优先发送的有效数据
-			break;
-		default:
-			break;
+			RADIO.TX.Len = tmp_ringbuf_buf[3] - 2;
+			memcpy(RADIO.TX.Data, tmp_ringbuf_buf+6, RADIO.TX.Len);
+			
+			RADIO.TxChannal  = tmp_ringbuf_buf[5];
+			
+		//	printf("%02X \r\n",RADIO.TxChannal);
+			
+			switch(tmp_ringbuf_buf[4])
+			{
+				case RADIO_TYPE_USE_NEED_PRE:	// 有效数据，需发前导帧
+					RADIO.BusyFlg = true;
+					RADIO.PreCnt = 0;
+					nrf_transmit_timeout_start(1);
+					break;
+				case RADIO_TYPE_USE_NEEDLESS_PRE:	// 有效数据，无需发前导帧 
+					RADIO.BusyFlg = true;
+					RADIO.PreCnt = NRF_PRE_TX_NUMBER;
+					nrf_transmit_timeout_start(1);			
+					break;
+				case RADIO_TYPE_INSTANT_ACK:	// ACK
+					break;
+				case RADIO_TYPE_INSTANT_USE:	// 需优先发送的有效数据
+					break;
+				default:
+					break;
+			}
+		}
 	}	
 }
 

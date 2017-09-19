@@ -23,20 +23,14 @@ int main (void)
 
 	rtc_calibrate_timeout_start();			//RTC校准定时器
 
-//	return_ack_timer_start();
+//	TIMER_TxOvertimeStart();
 	
 	printf("sys init ok \r\n");	
 	
 	while(true)
 	{
-		if(!RADIO.BusyFlg)				// RADIO系统空闲
-		{			
-			if((get_ringbuf_status() != BUFF_EMPTY))
-			{
-				spi_rx_data_handler();
-			}
-		}	
-//		printf("main running \r\n");
+		SPI_DataHandler();	
+		RADIO_SendHandler();		
 	}
 }
 

@@ -22,9 +22,9 @@ void spi_overtime_timer_start(void);
 void spi_overtime_timer_stop(void);
 void spi_overtime_timer_handler(void * p_context);
 
-void return_ack_timer_start(void);
-void return_ack_timer_stop(void);
-void return_ack_timer_handler(void * p_context);
+void TIMER_TxOvertimeStart(void);
+void TIMER_TxOvertimeStop(void);
+void TIMER_TxOvertimeHandler(void * p_context);
 
 #endif 
 
