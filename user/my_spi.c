@@ -120,36 +120,40 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 		case NRF_DRV_SPIS_XFER_DONE:
 
 //			UART_DEBUG(m_rx_buf, event.rx_amount);			
-//			spi_debug("%02X \r\n",m_rx_buf[5]);				// 频点
+//			spi_debug("%02X \r\n",m_rx_buf[5]);							// 频点
 			
-			
+			//包头、包尾、数据类型、XOR校验
 			if( (0x86              == m_rx_buf[0])       &&
-				(0x76              == m_rx_buf[event.rx_amount - 1]) &&
+				(NRF_TX_DEV_ID     == m_rx_buf[1])       &&
+				(0x76              == m_rx_buf[event.rx_amount - 1]) &&				
 				m_rx_buf[event.rx_amount - 2] == XOR_Cal(m_rx_buf+1, event.rx_amount - 3) )
 			{
 				SPI.RX.Head 		= m_rx_buf[0];
-				SPI.RX.DevId 		= m_rx_buf[1];
-				SPI.RX.CmdType 		= m_rx_buf[2];
+				SPI.RX.DevId 		= m_rx_buf[1];	
+				SPI.RX.CmdType 		= m_rx_buf[2];	
 				SPI.RX.CmdLen 		= m_rx_buf[3];
 				memcpy(SPI.RX.CmdData, m_rx_buf+4, SPI.RX.CmdLen);
 				SPI.RX.Xor 			= m_rx_buf[4+SPI.RX.CmdLen];
 				SPI.RX.End 			= m_rx_buf[5+SPI.RX.CmdLen];
 
 //				UART_DEBUG(m_rx_buf, 6);
-//				UART_DEBUG(m_rx_buf, 30);	
+//				UART_DEBUG(m_rx_buf, event.rx_amount);			
 				
 				switch(SPI.RX.CmdType)
 				{
 					case SPI_CMD_SET_CHANNAL:					
-						if((SPI.RX.CmdData[0]&0x7F) <= 125)
+//						if((SPI.RX.CmdData[0]&0x7F) <= 125)
+						if( 4 == (SPI.RX.CmdData[0]&0x7F) ||
+							3 == (SPI.RX.CmdData[0]&0x7F) ||
+							7 == (SPI.RX.CmdData[0]&0x7F) ||
+							8 == (SPI.RX.CmdData[0]&0x7F) ||
+							11== (SPI.RX.CmdData[0]&0x7F) ||
+							12 == (SPI.RX.CmdData[0]&0x7F) 
+							)						
 						{
 							RADIO.TxChannal = SPI.RX.CmdData[0];
 							RADIO.TxPower = SPI.RX.CmdData[1];
-							do
-							{
-								nrf_esb_set_rf_channel(RADIO.TxChannal);	
-								nrf_esb_get_rf_channel(&TmpChannal);	
-							}while((TmpChannal != RADIO.TxChannal) && (++i < 0x0FFF));													
+							nrf_esb_set_rf_channel(RADIO.TxChannal);												
 							spi_slave_tx_buffers_init(SPI_CMD_SET_CHANNAL);	
 							SPI.SpiTriggerIrqFlg = true;				
 						}					
@@ -173,8 +177,9 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 						
 						switch(SPI.RX.CmdData[0])
 						{
-							case RADIO_TYPE_USE_NEED_PRE:	
+							case RADIO_TYPE_USE_NEED_PRE:
 							case RADIO_TYPE_USE_NEEDLESS_PRE:
+//								printf("U1 %02X \r\n",SPI.RX.CmdData[1]);
 								if(get_ringbuf_status() != BUFF_FULL)
 								{
 									ringbuf_write_data(m_rx_buf,event.rx_amount);
@@ -186,9 +191,11 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 								}
 								break;
 							case RADIO_TYPE_INSTANT_ACK:
-								RADIO_SendAck(SPI.RX.CmdData+20, 1, SPI.RX.CmdData[1]);
+//								printf("A %02X \r\n",SPI.RX.CmdData[1]);
+								RADIO_SendAck(SPI.RX.CmdData+20, 1, SPI.RX.CmdData[1]);							
 								break;							
 							case RADIO_TYPE_INSTANT_USE:
+//								printf("U2 %02X \r\n",SPI.RX.CmdData[1]);
 								RADIO_SendData(SPI.RX.CmdData+2, SPI.RX.CmdLen - 2, SPI.RX.CmdData[1]);
 								break;
 							default:
@@ -262,14 +269,7 @@ void spi_rx_data_handler(void)
 
 	RADIO.TxChannal  = tmp_ringbuf_buf[5];
 	
-	// 设置发送的频点
-//	do
-//	{
-//		nrf_esb_set_rf_channel(RADIO.TxChannal);	
-//		nrf_esb_get_rf_channel(&TmpChannal);	
-//	}while((TmpChannal != RADIO.TxChannal) && (++i < 0x0FFF));		
-	
-//	spi_debug("%02X \r\n",RADIO.TxChannal);		
+//	printf("%02X \r\n",RADIO.TxChannal);
 	
 	switch(tmp_ringbuf_buf[4])
 	{

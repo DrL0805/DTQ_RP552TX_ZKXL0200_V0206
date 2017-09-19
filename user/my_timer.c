@@ -104,7 +104,7 @@ void nrf_transmit_timer_handler(void * p_context)
 //		if(tx_payload.data[15] == 0x41)
 //			printf("G \r\n");
 		
-		for(i = 0; i < NRF_ENHANCE_TX_NUM; i++)
+//		for(i = 0; i < NRF_ENHANCE_TX_NUM; i++)
 			nrf_esb_write_payload(&tx_payload);
 	}
 	else
@@ -119,6 +119,7 @@ void nrf_transmit_timer_handler(void * p_context)
 		tx_payload.data[tx_payload.length - 2] = XOR_Cal(tx_payload.data+1, 17);		// Ð£Ñé
 		tx_payload.data[tx_payload.length - 1] = 0x21;									// °üÎ²	
 		
+//		printf("%02X \r\n",RADIO.TxChannal);
 		SE2431L_TxMode();
 		nrf_esb_set_rf_channel(RADIO.TxChannal);	
 		nrf_esb_write_payload(&tx_payload);

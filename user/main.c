@@ -35,16 +35,7 @@ int main (void)
 			{
 				spi_rx_data_handler();
 			}
-		}
-		
-//		if(SPI.SpiTriggerIrqFlg)
-//		{
-////				nrf_delay_ms(5);
-//			SPI.SpiTriggerIrqFlg = false;
-//			spi_trigger_irq();			
-//			
-//		}		
-		
+		}	
 //		printf("main running \r\n");
 	}
 }
