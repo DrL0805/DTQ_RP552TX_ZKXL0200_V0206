@@ -19,6 +19,7 @@ void nrf_esb_event_handler(nrf_esb_evt_t const * p_event)
         case NRF_ESB_EVENT_TX_SUCCESS:
 			if(0 == get_tx_fifo_count())
 			{
+//				printf("Len:%02X \r\n",tx_payload.length);
 				SE2431L_SleepMode();		
 				RADIO.HardTxBusyFlg = false;
 			}
@@ -145,9 +146,12 @@ void RADIO_SendHandler(void)
 			
 			SE2431L_TxMode();
 			nrf_esb_set_rf_channel(TmpChannal);
-
-			nrf_esb_write_payload(&tx_payload);	
+			
+			nrf_esb_write_payload(&tx_payload);
+			
 			RADIO.HardTxBusyFlg = true;
+			TIMER_TxOvertimeStart();
+			
 		}		
 	}
 }
