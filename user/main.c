@@ -23,7 +23,7 @@ int main (void)
 
 	rtc_calibrate_timeout_start();			//RTC校准定时器
 
-	printf("sys init ok \r\n");	
+	DEBUG_UART_1("sys init ok \r\n");	
 	
 	while(true)
 	{

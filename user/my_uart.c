@@ -3,7 +3,7 @@
 
 
 void debug_uart_init(void)//串口初始化函数
-  {  
+{  
 
 	simple_uart_config(RTS_PIN_NUMBER_1, TX_PIN_NUMBER_1, CTS_PIN_NUMBER_1, RX_PIN_NUMBER_1, HWFC_1);
 //	simple_uart_config(RTS_PIN_NUMBER, TX_PIN_NUMBER, CTS_PIN_NUMBER, RX_PIN_NUMBER, HWFC);
@@ -11,7 +11,7 @@ void debug_uart_init(void)//串口初始化函数
 }	
 
 
-void UART_DEBUG(uint8_t * p_buffer, uint32_t len)
+void UART_PrintfN(uint8_t * p_buffer, uint32_t len)
 {
     for (uint32_t index = 0; index <  len; index++)
     {

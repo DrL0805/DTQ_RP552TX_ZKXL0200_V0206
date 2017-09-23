@@ -143,8 +143,8 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 				SPI.RX.Xor 			= m_rx_buf[4+SPI.RX.CmdLen];
 				SPI.RX.End 			= m_rx_buf[5+SPI.RX.CmdLen];
 
-//				UART_DEBUG(m_rx_buf, 6);
-//				UART_DEBUG(m_rx_buf, event.rx_amount);			
+//				DEBUG_UART_N(m_rx_buf, 6);
+//				DEBUG_UART_N(m_rx_buf, event.rx_amount);			
 				
 				switch(SPI.RX.CmdType)
 				{
@@ -180,6 +180,7 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 								}
 								break;
 							case RADIO_TYPE_INSTANT_ACK:
+//								printf("ACK \r\n");
 								RADIO_SendAck(SPI.RX.CmdData+20, 1, SPI.RX.CmdData[1]);									
 								break;							
 							case RADIO_TYPE_INSTANT_USE:

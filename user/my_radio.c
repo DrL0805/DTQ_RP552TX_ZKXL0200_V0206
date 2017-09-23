@@ -142,7 +142,7 @@ void RADIO_SendHandler(void)
 			RINGBUF_ReadData_nRF(tx_payload.data, &tx_payload.length, &TmpChannal);
 
 //			printf("Channal:%02X, Len:%02X \r\n", TmpChannal, tx_payload.length);
-//			UART_DEBUG(tx_payload.data, tx_payload.length);
+//			DEBUG_UART_N(tx_payload.data, tx_payload.length);
 			
 			SE2431L_TxMode();
 			nrf_esb_set_rf_channel(TmpChannal);

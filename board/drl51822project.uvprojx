@@ -410,6 +410,11 @@
               <FileType>1</FileType>
               <FilePath>..\user\se2431l.c</FilePath>
             </File>
+            <File>
+              <FileName>ringbuf_nrf.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\ringbuf_nrf.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
