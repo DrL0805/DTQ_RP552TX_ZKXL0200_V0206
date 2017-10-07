@@ -20,7 +20,8 @@ void nrf_esb_event_handler(nrf_esb_evt_t const * p_event)
 			if(0 == get_tx_fifo_count())
 			{
 //				printf("Len:%02X \r\n",tx_payload.length);
-				SE2431L_SleepMode();		
+				SE2431L_SleepMode();
+				TIMER_TxOvertimeStop();				
 				RADIO.HardTxBusyFlg = false;
 			}
             break;
