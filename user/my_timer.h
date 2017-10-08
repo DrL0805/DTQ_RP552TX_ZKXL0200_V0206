@@ -26,5 +26,12 @@ void TIMER_TxOvertimeStart(void);
 void TIMER_TxOvertimeStop(void);
 void TIMER_TxOvertimeHandler(void * p_context);
 
+void TIMER_TxPreOvertimeStart(void);
+void TIMER_TxPreOvertimeStop(void);
+void TIMER_TxPreOvertimeHandler(void * p_context);
+
+void watch_dog_timeout_start(void);
+void watch_dog_timeout_stop(void);
+void watch_dog_timer_handler(void * p_context);
 #endif 
 

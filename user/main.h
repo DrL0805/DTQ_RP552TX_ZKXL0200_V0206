@@ -8,7 +8,7 @@
 #include "sdk_common.h"
 #include "nrf_drv_spis.h"
 #include "nrf_drv_config.h"
-//#include "nrf_drv_wdt.h"
+#include "nrf_drv_wdt.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
 #include "nrf_esb.h"
@@ -27,7 +27,7 @@
 #include "se2431l.h"
 #include "ringbuf2.h"
 #include "ringbuf_nrf.h"
-
+#include "watchdog.h"
 
 
 // Èí¼þ°æ±¾ -----------------------------------------------------------

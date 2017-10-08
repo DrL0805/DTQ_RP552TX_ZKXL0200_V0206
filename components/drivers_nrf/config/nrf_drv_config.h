@@ -427,7 +427,7 @@
 #endif
 
 /* WDT */
-#define WDT_ENABLED 0
+#define WDT_ENABLED 1
 
 #if (WDT_ENABLED == 1)
 #define WDT_CONFIG_BEHAVIOUR     NRF_WDT_BEHAVIOUR_RUN_SLEEP

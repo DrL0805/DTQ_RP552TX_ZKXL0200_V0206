@@ -263,7 +263,10 @@ void SPI_DataHandler(void)
 			
 			RADIO.TxChannal  = tmp_ringbuf_buf[5];
 			
-		//	printf("%02X \r\n",RADIO.TxChannal);
+//			spi_debug("%02X \r\n",RADIO.TX.Data[15]);
+			
+//			if(RADIO.TX.Data[15] == 0x13)
+//				tmp_ringbuf_len++;
 			
 			switch(tmp_ringbuf_buf[4])
 			{
@@ -271,11 +274,13 @@ void SPI_DataHandler(void)
 					RADIO.BusyFlg = true;
 					RADIO.PreCnt = 0;
 					nrf_transmit_timeout_start(1);
+					TIMER_TxPreOvertimeStart();
 					break;
 				case RADIO_TYPE_USE_NEEDLESS_PRE:	// 有效数据，无需发前导帧 
 					RADIO.BusyFlg = true;
 					RADIO.PreCnt = NRF_PRE_TX_NUMBER;
-					nrf_transmit_timeout_start(1);			
+					nrf_transmit_timeout_start(1);
+					TIMER_TxPreOvertimeStart();				
 					break;
 				case RADIO_TYPE_INSTANT_ACK:	// ACK
 					break;

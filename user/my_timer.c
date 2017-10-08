@@ -15,13 +15,16 @@
 #define NRF_TRANSMIT_TIMEOUT_INTERVAL     	APP_TIMER_TICKS(50, 	APP_TIMER_PRESCALER)
 #define SPI_OVERTIME_TIMEOUT_INTERVAL     	APP_TIMER_TICKS(100, 	APP_TIMER_PRESCALER)
 #define TX_OVERTIME_TIMEOUT_INTERVAL     	APP_TIMER_TICKS(10, 	APP_TIMER_PRESCALER)
+#define TX_PRE_OVERTIME_TIMEOUT_INTERVAL    APP_TIMER_TICKS(150, 	APP_TIMER_PRESCALER)
+#define WATCH_DOG_TIMEOUT_INTERVAL     		APP_TIMER_TICKS(1000, 	APP_TIMER_PRESCALER)
 
 
 APP_TIMER_DEF(temp_timer_id);
 APP_TIMER_DEF(spi_overtime_timer_id);	
 APP_TIMER_DEF(nrf_transmit_timer_id);
 APP_TIMER_DEF(tx_overtime_timer_id);
-
+APP_TIMER_DEF(tx_pre_overtime_timer_id);
+APP_TIMER_DEF(watch_dog_timer_id);	
 
 void timers_init(void)
 {
@@ -36,6 +39,8 @@ void timers_init(void)
 	err_code = app_timer_create(&nrf_transmit_timer_id,APP_TIMER_MODE_REPEATED,nrf_transmit_timer_handler);
 	APP_ERROR_CHECK(err_code);
 
+	err_code = app_timer_create(&watch_dog_timer_id,APP_TIMER_MODE_REPEATED,watch_dog_timer_handler);
+	APP_ERROR_CHECK(err_code);
 	
 	// 仅一次的定时器
 	err_code = app_timer_create(&spi_overtime_timer_id,APP_TIMER_MODE_SINGLE_SHOT,spi_overtime_timer_handler);
@@ -43,6 +48,9 @@ void timers_init(void)
 	
 	err_code = app_timer_create(&tx_overtime_timer_id,APP_TIMER_MODE_SINGLE_SHOT,TIMER_TxOvertimeHandler);
 	APP_ERROR_CHECK(err_code);	
+	
+	err_code = app_timer_create(&tx_pre_overtime_timer_id,APP_TIMER_MODE_SINGLE_SHOT,TIMER_TxPreOvertimeHandler);
+	APP_ERROR_CHECK(err_code);		
 }
 
 void rtc_calibrate_timeout_start(void)
@@ -94,6 +102,7 @@ void nrf_transmit_timer_handler(void * p_context)
 	{
 		nrf_transmit_timeout_stop();
 		
+		TIMER_TxPreOvertimeStop();
 		RADIO.BusyFlg = false;
 		
 		// 把需要发送的数据存入缓冲区中，等待硬件资源空闲后发送
@@ -162,7 +171,42 @@ void TIMER_TxOvertimeHandler(void * p_context)
 	RADIO.HardTxBusyFlg = false;
 }
 
+void TIMER_TxPreOvertimeStart(void)
+{
+	uint32_t err_code;
+	err_code = app_timer_start(tx_pre_overtime_timer_id,TX_PRE_OVERTIME_TIMEOUT_INTERVAL,NULL);
+	APP_ERROR_CHECK(err_code);
+}
 
+void TIMER_TxPreOvertimeStop(void)
+{
+	uint32_t err_code;
+	err_code = app_timer_stop(tx_pre_overtime_timer_id);
+	APP_ERROR_CHECK(err_code);
+}
 
+void TIMER_TxPreOvertimeHandler(void * p_context)
+{
+	RADIO.BusyFlg = false;
+}
 
+void watch_dog_timeout_start(void)
+{
+	uint32_t err_code;
+	err_code = app_timer_start(watch_dog_timer_id,WATCH_DOG_TIMEOUT_INTERVAL,NULL);
+	APP_ERROR_CHECK(err_code);
+}
+
+void watch_dog_timeout_stop(void)
+{
+	uint32_t err_code;
+	err_code = app_timer_stop(watch_dog_timer_id);
+	APP_ERROR_CHECK(err_code);
+}
+
+void watch_dog_timer_handler(void * p_context)
+{
+//	printf("watch_dog_timer_handler \r\n");
+	WDT.FeedFlg = true;
+}
 

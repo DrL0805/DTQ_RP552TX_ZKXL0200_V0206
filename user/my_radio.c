@@ -144,13 +144,15 @@ void RADIO_SendHandler(void)
 
 //			printf("Channal:%02X, Len:%02X \r\n", TmpChannal, tx_payload.length);
 //			DEBUG_UART_N(tx_payload.data, tx_payload.length);
+//			printf("%02X \r\n",tx_payload.length);
 			
 			SE2431L_TxMode();
 			nrf_esb_set_rf_channel(TmpChannal);
 			
+			RADIO.HardTxBusyFlg = true;
+			
 			nrf_esb_write_payload(&tx_payload);
 			
-			RADIO.HardTxBusyFlg = true;
 			TIMER_TxOvertimeStart();
 			
 		}		

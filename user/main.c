@@ -21,14 +21,18 @@ int main (void)
 	
 	RADIO_Init();
 
+	WDT_Init();
+	
 	rtc_calibrate_timeout_start();			//RTC校准定时器
 
-	DEBUG_UART_1("sys init ok \r\n");	
+//	DEBUG_UART_1("sys init ok \r\n");	
 	
 	while(true)
 	{
 		SPI_DataHandler();	
-		RADIO_SendHandler();		
+		RADIO_SendHandler();
+
+		WDT_FeedDog();	
 	}
 }
 
