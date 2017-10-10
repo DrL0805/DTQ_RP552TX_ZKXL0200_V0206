@@ -16,7 +16,7 @@
 #define SPI_OVERTIME_TIMEOUT_INTERVAL     	APP_TIMER_TICKS(100, 	APP_TIMER_PRESCALER)
 #define TX_OVERTIME_TIMEOUT_INTERVAL     	APP_TIMER_TICKS(10, 	APP_TIMER_PRESCALER)
 #define TX_PRE_OVERTIME_TIMEOUT_INTERVAL    APP_TIMER_TICKS(150, 	APP_TIMER_PRESCALER)
-#define WATCH_DOG_TIMEOUT_INTERVAL     		APP_TIMER_TICKS(1000, 	APP_TIMER_PRESCALER)
+#define WATCH_DOG_TIMEOUT_INTERVAL     		APP_TIMER_TICKS(500, 	APP_TIMER_PRESCALER)
 
 
 APP_TIMER_DEF(temp_timer_id);
@@ -109,7 +109,11 @@ void nrf_transmit_timer_handler(void * p_context)
 		if(RINGBUF_GetStatus() != RINGBUF_STATUS_FULL)
 		{
 			RINGBUF_WriteData_nRF(RADIO.TX.Data, RADIO.TX.Len, RADIO.TxChannal);													
-		}		
+		}
+		else
+		{
+			timer_debug("RINGBUF_STATUS_FULL ");
+		}
 	}
 	else
 	{
@@ -127,6 +131,10 @@ void nrf_transmit_timer_handler(void * p_context)
 		if(RINGBUF_GetStatus() != RINGBUF_STATUS_FULL)
 		{
 			RINGBUF_WriteData_nRF(TmpPreBuf, TmpPreLen, RADIO.TxChannal);													
+		}
+		else
+		{
+			timer_debug("RINGBUF_STATUS_FULL ");
 		}		
 	}
 }
@@ -167,7 +175,7 @@ void TIMER_TxOvertimeStop(void)
 
 void TIMER_TxOvertimeHandler(void * p_context)
 {
-//	printf("r \r\n");
+	timer_debug("r \r\n");
 	RADIO.HardTxBusyFlg = false;
 }
 
@@ -206,7 +214,7 @@ void watch_dog_timeout_stop(void)
 
 void watch_dog_timer_handler(void * p_context)
 {
-//	printf("watch_dog_timer_handler \r\n");
+//	TIMER_DEBUG("watch_dog_timer_handler \r\n");
 	WDT.FeedFlg = true;
 }
 

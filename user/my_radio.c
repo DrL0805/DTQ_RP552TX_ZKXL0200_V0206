@@ -19,7 +19,8 @@ void nrf_esb_event_handler(nrf_esb_evt_t const * p_event)
         case NRF_ESB_EVENT_TX_SUCCESS:
 			if(0 == get_tx_fifo_count())
 			{
-//				printf("Len:%02X \r\n",tx_payload.length);
+//				nrf_gpio_pin_clear(TX_PIN_NUMBER_1);
+				
 				SE2431L_SleepMode();
 				TIMER_TxOvertimeStop();				
 				RADIO.HardTxBusyFlg = false;
@@ -39,7 +40,7 @@ uint32_t my_tx_esb_init(void)
     uint32_t err_code;
     uint8_t base_addr_0[4] = {0xE7, 0xE7, 0xE7, 0xE7};
     uint8_t addr_prefix[8] = {0xE7, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8 };
-
+	
     nrf_esb_config_t nrf_esb_config         = NRF_ESB_DEFAULT_CONFIG;
     nrf_esb_config.protocol                 = NRF_ESB_PROTOCOL_ESB_DPL;
     nrf_esb_config.retransmit_delay         = 600;
@@ -134,6 +135,7 @@ void RADIO_SendAck(uint8_t* UidBuf, uint8_t UidNum, uint32_t TxChannal)
 void RADIO_SendHandler(void)
 {
 	uint8_t TmpChannal;
+	uint32_t err_code;
 	
 	// 如果RADIO硬件资源不被占用，则发送RingBuffer里的数据
 	if(!RADIO.HardTxBusyFlg)
@@ -144,13 +146,16 @@ void RADIO_SendHandler(void)
 
 //			printf("Channal:%02X, Len:%02X \r\n", TmpChannal, tx_payload.length);
 //			DEBUG_UART_N(tx_payload.data, tx_payload.length);
-//			printf("%02X \r\n",tx_payload.length);
+			
+			// 通过%02X格式打印数据会导致程序卡死，其他打印方式则不会
+//			DEBUG_UART_1("%02X \r\n",tx_payload.length);
 			
 			SE2431L_TxMode();
 			nrf_esb_set_rf_channel(TmpChannal);
 			
 			RADIO.HardTxBusyFlg = true;
 			
+//			nrf_gpio_pin_set(TX_PIN_NUMBER_1);
 			nrf_esb_write_payload(&tx_payload);
 			
 			TIMER_TxOvertimeStart();

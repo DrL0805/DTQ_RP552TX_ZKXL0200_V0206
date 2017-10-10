@@ -13,11 +13,11 @@
  
 // SPI
 #define		RINGBUF_MAX_NUM_SPI		(10)
-#define		RINGBUF_LENGTH_SPI		(256)
+#define		RINGBUF_LENGTH_SPI		(255)
 
 // 2.4G·¢ËÍ
 #define		RINGBUF_MAX_NUM_NRF		(10)
-#define		RINGBUF_LENGTH_NRF		(256)
+#define		RINGBUF_LENGTH_NRF		(255)
 
 typedef struct
 {

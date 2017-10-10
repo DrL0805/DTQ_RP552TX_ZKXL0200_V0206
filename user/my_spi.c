@@ -1,6 +1,6 @@
 #include "my_spi.h"
 
-#define SPI_DEBUG
+//#define SPI_DEBUG
 #ifdef SPI_DEBUG
 #define spi_debug  printf   
 #else  
@@ -115,7 +115,7 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 		case NRF_DRV_SPIS_BUFFERS_SET_DONE:
 			break;
 		case NRF_DRV_SPIS_XFER_DONE:
-
+//			nrf_gpio_pin_set(TX_PIN_NUMBER_1);
 			/*
 				SPI层数据格式：
 					0：		Head固定 0x86
@@ -144,7 +144,7 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 				SPI.RX.End 			= m_rx_buf[5+SPI.RX.CmdLen];
 
 //				DEBUG_UART_N(m_rx_buf, 6);
-//				DEBUG_UART_N(m_rx_buf, event.rx_amount);			
+//				DEBUG_UART_N(m_rx_buf, event.rx_amount);		
 				
 				switch(SPI.RX.CmdType)
 				{
@@ -178,6 +178,10 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 									RINGBUF_WriteData(m_rx_buf,event.rx_amount);
 									spi_slave_tx_buffers_init(SPI_CMD_SEND_24G_DATA);														
 								}
+								else
+								{
+									spi_debug("RINGBUF_STATUS_FULL \r\n");
+								}
 								break;
 							case RADIO_TYPE_INSTANT_ACK:
 //								printf("ACK \r\n");
@@ -187,13 +191,17 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 								if(RINGBUF_GetStatus_nRF() != RINGBUF_STATUS_FULL_nRF)
 								{
 									RINGBUF_WriteData_nRF(SPI.RX.CmdData+2, SPI.RX.CmdLen-2, SPI.RX.CmdData[1]);													
-								}							
+								}
+								else
+								{
+									spi_debug("RINGBUF_STATUS_FULL_nRF \r\n");
+								}								
 								break;
 							default:
 								break;
 						}
 						spi_slave_tx_buffers_init(SPI_CMD_SEND_24G_DATA);
-						SPI.SpiTriggerIrqFlg = true;					
+						SPI.SpiTriggerIrqFlg = true;
 						break;
 					default:
 						break;
@@ -208,6 +216,8 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 				SPI.SpiTriggerIrqFlg = false;
 				spi_trigger_irq();			
 			}
+			
+//			nrf_gpio_pin_clear(TX_PIN_NUMBER_1);
 			break;
 		case NRF_DRV_SPIS_EVT_TYPE_MAX:
 			
@@ -262,11 +272,6 @@ void SPI_DataHandler(void)
 			memcpy(RADIO.TX.Data, tmp_ringbuf_buf+6, RADIO.TX.Len);
 			
 			RADIO.TxChannal  = tmp_ringbuf_buf[5];
-			
-//			spi_debug("%02X \r\n",RADIO.TX.Data[15]);
-			
-//			if(RADIO.TX.Data[15] == 0x13)
-//				tmp_ringbuf_len++;
 			
 			switch(tmp_ringbuf_buf[4])
 			{

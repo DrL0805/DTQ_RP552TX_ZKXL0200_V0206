@@ -13,7 +13,7 @@
 
 // 2.4G·¢ËÍ
 #define		RINGBUF_MAX_NUM_nRF		(10)
-#define		RINGBUF_LENGTH_nRF		(256)
+#define		RINGBUF_LENGTH_nRF		(255)
 
 typedef struct
 {

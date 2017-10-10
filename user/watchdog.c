@@ -6,7 +6,7 @@ WATCHDOG_PAR_T			 WDT;
 
 void wdt_event_handler(void)
 {
-	printf("wdt_handler \r\n");
+	DEBUG_UART_1("wdt_handler \r\n");
     
     //NOTE: The max amount of time we can spend in WDT interrupt is two cycles of 32768[Hz] clock - after that, reset occurs
 } 
