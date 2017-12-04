@@ -10,10 +10,10 @@
 
 void DEBUG_FUN(void)
 {
-//	nrf_gpio_pin_set(TX_PIN_NUMBER_1);
-//	nrf_delay_ms(5);
-//	nrf_gpio_pin_clear(TX_PIN_NUMBER_1);
-//	nrf_delay_ms(5);
+	nrf_gpio_pin_set(TX_PIN_NUMBER_1);
+	nrf_delay_ms(5);
+	nrf_gpio_pin_clear(TX_PIN_NUMBER_1);
+	nrf_delay_ms(5);
 }
 
 
@@ -23,7 +23,7 @@ int main (void)
 	
 	nrf_gpio_cfg_output(TX_PIN_NUMBER_1);	// 示波器查看
 		
-	debug_uart_init();						// 别忘答题器和接收器串口脚不一样
+//	debug_uart_init();						// 别忘答题器和接收器串口脚不一样
 	
 	timers_init();
 	SE2431L_GpioInit();

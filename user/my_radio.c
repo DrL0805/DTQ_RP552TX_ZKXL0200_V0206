@@ -19,7 +19,7 @@ void nrf_esb_event_handler(nrf_esb_evt_t const * p_event)
         case NRF_ESB_EVENT_TX_SUCCESS:
 			if(0 == get_tx_fifo_count())
 			{
-//				nrf_gpio_pin_clear(TX_PIN_NUMBER_1);
+				nrf_gpio_pin_clear(TX_PIN_NUMBER_1);
 				
 				SE2431L_SleepMode();
 				TIMER_TxOvertimeStop();				
@@ -155,7 +155,7 @@ void RADIO_SendHandler(void)
 			
 			RADIO.HardTxBusyFlg = true;
 			
-//			nrf_gpio_pin_set(TX_PIN_NUMBER_1);
+			nrf_gpio_pin_set(TX_PIN_NUMBER_1);
 			nrf_esb_write_payload(&tx_payload);
 			
 			TIMER_TxOvertimeStart();

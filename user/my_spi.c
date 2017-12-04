@@ -149,14 +149,14 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 				switch(SPI.RX.CmdType)
 				{
 					case SPI_CMD_SET_CHANNAL:					
-//						if((SPI.RX.CmdData[0]&0x7F) <= 125)
-						if( 4 == (SPI.RX.CmdData[0]&0x7F) ||
-							3 == (SPI.RX.CmdData[0]&0x7F) ||
-							7 == (SPI.RX.CmdData[0]&0x7F) ||
-							8 == (SPI.RX.CmdData[0]&0x7F) ||
-							11== (SPI.RX.CmdData[0]&0x7F) ||
-							12 == (SPI.RX.CmdData[0]&0x7F) 
-							)						
+						if((SPI.RX.CmdData[0]&0x7F) <= 125)
+//						if( 4 == (SPI.RX.CmdData[0]&0x7F) ||
+//							3 == (SPI.RX.CmdData[0]&0x7F) ||
+//							7 == (SPI.RX.CmdData[0]&0x7F) ||
+//							8 == (SPI.RX.CmdData[0]&0x7F) ||
+//							11== (SPI.RX.CmdData[0]&0x7F) ||
+//							12 == (SPI.RX.CmdData[0]&0x7F) 
+//							)						
 						{
 							RADIO.TxChannal = SPI.RX.CmdData[0];
 							RADIO.TxPower = SPI.RX.CmdData[1];
