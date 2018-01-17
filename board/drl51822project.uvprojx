@@ -420,6 +420,11 @@
               <FileType>1</FileType>
               <FilePath>..\user\watchdog.c</FilePath>
             </File>
+            <File>
+              <FileName>flash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\flash.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

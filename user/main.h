@@ -28,11 +28,12 @@
 #include "ringbuf2.h"
 #include "ringbuf_nrf.h"
 #include "watchdog.h"
+#include "flash.h"
 
 
 // 软件版本 -----------------------------------------------------------
 #define 	VERSION_LEVEL_1		(2)		//一级版本号
-#define     VERSION_LEVEL_2		(0)		//二级版本号
+#define     VERSION_LEVEL_2		(4)		//二级版本号
 
 uint8_t XOR_Cal(uint8_t * dat,uint16_t length);
 void gpio_default_init(void);

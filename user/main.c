@@ -22,11 +22,13 @@ int main (void)
 	clocks_start();
 	
 	nrf_gpio_cfg_output(TX_PIN_NUMBER_1);	// 示波器查看
-		
+	
 //	debug_uart_init();						// 别忘答题器和接收器串口脚不一样
 	
 	timers_init();
 	SE2431L_GpioInit();
+	
+	FLASH_Init();
 	
 	spi_gpio_init();
 	my_spi_slave_init();

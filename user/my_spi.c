@@ -109,7 +109,6 @@ void spi_trigger_irq(void)
 
 void spis_event_handler(nrf_drv_spis_event_t event)
 {
-
 	switch(event.evt_type)
 	{
 		case NRF_DRV_SPIS_BUFFERS_SET_DONE:
@@ -148,27 +147,27 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 				
 				switch(SPI.RX.CmdType)
 				{
-					case SPI_CMD_SET_CHANNAL:					
-						if((SPI.RX.CmdData[0]&0x7F) <= 125)
-//						if( 4 == (SPI.RX.CmdData[0]&0x7F) ||
-//							3 == (SPI.RX.CmdData[0]&0x7F) ||
-//							7 == (SPI.RX.CmdData[0]&0x7F) ||
-//							8 == (SPI.RX.CmdData[0]&0x7F) ||
-//							11== (SPI.RX.CmdData[0]&0x7F) ||
-//							12 == (SPI.RX.CmdData[0]&0x7F) 
-//							)						
+					case SPI_CMD_SET_CHANNAL:
+						// 频点		
+						if((SPI.RX.CmdData[0]&0x7F) <= 125)			
 						{
 							RADIO.TxChannal = SPI.RX.CmdData[0];
-							RADIO.TxPower = SPI.RX.CmdData[1];
-							nrf_esb_set_rf_channel(RADIO.TxChannal);												
-							spi_slave_tx_buffers_init(SPI_CMD_SET_CHANNAL);	
-							SPI.SpiTriggerIrqFlg = true;				
-						}					
+							nrf_esb_set_rf_channel(RADIO.TxChannal);															
+						}
+						
+						// 发送功率和发送方式
+						RADIO.TxPower = SPI.RX.CmdData[1];
+						
+						// 相关参数写入FLASH
+						FLASH_WriteAppData();
+						
+						spi_slave_tx_buffers_init(SPI_CMD_SET_CHANNAL);	
+						SPI.SpiTriggerIrqFlg = true;							
 						break;
 					case SPI_CMD_GET_STATE:						
 						spi_slave_tx_buffers_init(SPI_CMD_GET_STATE);	
 						break;
-					case SPI_CMD_SEND_24G_DATA:							
+					case SPI_CMD_SEND_24G_DATA:
 						switch(SPI.RX.CmdData[0])
 						{
 							case RADIO_TYPE_USE_NEED_PRE:

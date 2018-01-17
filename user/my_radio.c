@@ -73,7 +73,6 @@ void RADIO_Init(void)
 	ret_code_t err_code;
 
 	RADIO.TxChannal = NRF_DEFAULT_TX_CHANNAL;
-	RADIO.TxPower = NRF_DEFAULT_TX_POWER;
 	
     err_code = my_tx_esb_init();
     APP_ERROR_CHECK(err_code);	
@@ -135,7 +134,6 @@ void RADIO_SendAck(uint8_t* UidBuf, uint8_t UidNum, uint32_t TxChannal)
 void RADIO_SendHandler(void)
 {
 	uint8_t TmpChannal;
-	uint32_t err_code;
 	
 	// 如果RADIO硬件资源不被占用，则发送RingBuffer里的数据
 	if(!RADIO.HardTxBusyFlg)
@@ -150,7 +148,30 @@ void RADIO_SendHandler(void)
 			// 通过%02X格式打印数据会导致程序卡死，其他打印方式则不会
 //			DEBUG_UART_1("%02X \r\n",tx_payload.length);
 			
-			SE2431L_TxMode();
+//			SE2431L_TxMode();
+			switch(RADIO.TxPower)					
+			{
+				case 1:
+					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_0DBM);
+					SE2431L_BypassMode();
+					break;
+				case 2:
+					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_4DBM);
+					SE2431L_BypassMode();								
+					break;
+				case 3:
+					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_NEG4DBM);
+					SE2431L_TxMode();									
+					break;
+				case 4:
+					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_0DBM);
+					SE2431L_TxMode();									
+					break;
+				case 5:
+					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_4DBM);
+					SE2431L_TxMode();									
+					break;
+			}			
 			nrf_esb_set_rf_channel(TmpChannal);
 			
 			RADIO.HardTxBusyFlg = true;

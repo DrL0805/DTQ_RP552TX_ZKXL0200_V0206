@@ -12,5 +12,6 @@
 void SE2431L_GpioInit(void);
 void SE2431L_TxMode(void);
 void SE2431L_SleepMode(void);
+void SE2431L_BypassMode(void);
 
 #endif
