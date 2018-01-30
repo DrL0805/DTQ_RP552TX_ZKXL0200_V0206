@@ -1,6 +1,6 @@
 #include "my_timer.h"
 
-#define TIMER_DEBUG
+//#define TIMER_DEBUG
 #ifdef TIMER_DEBUG
 #define timer_debug  printf   
 #else  
@@ -117,14 +117,14 @@ void nrf_transmit_timer_handler(void * p_context)
 	}
 	else
 	{
-		TmpPreLen = 20;
+		TmpPreLen = 23;
 		
-		memcpy(TmpPreBuf, &RADIO.TX.Data, 14);								// Head~ExtendLen
-		TmpPreBuf[14] = 3;													// 包长
-		TmpPreBuf[15] = 0x51;														
-		TmpPreBuf[16] = 0x01;
-		TmpPreBuf[17] = RADIO.PreCnt;
-		TmpPreBuf[TmpPreLen - 2] = XOR_Cal(TmpPreBuf+1, 17);				// 校验
+		memcpy(TmpPreBuf, &RADIO.TX.Data, 17);								// Head~ExtendLen
+		TmpPreBuf[17] = 3;													// 包长
+		TmpPreBuf[18] = 0x51;														
+		TmpPreBuf[19] = 0x01;
+		TmpPreBuf[20] = RADIO.PreCnt;
+		TmpPreBuf[TmpPreLen - 2] = XOR_Cal(TmpPreBuf+1, TmpPreLen-3);				// 校验
 		TmpPreBuf[TmpPreLen - 1] = 0x21;									// 包尾	
 		
 		// 把需要发送的数据存入缓冲区中，等待硬件资源空闲后发送

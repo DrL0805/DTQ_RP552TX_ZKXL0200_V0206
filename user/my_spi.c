@@ -3,9 +3,9 @@
 //#define SPI_DEBUG
 #ifdef SPI_DEBUG
 #define spi_debug  printf   
-#else  
+#else
 #define spi_debug(...)                    
-#endif 
+#endif
 
 uint8_t tx_data_len;
 uint8_t m_tx_buf[TX_BUF_SIZE];   /**< SPI TX buffer. */      
@@ -143,12 +143,12 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 				SPI.RX.End 			= m_rx_buf[5+SPI.RX.CmdLen];
 
 //				DEBUG_UART_N(m_rx_buf, 6);
-//				DEBUG_UART_N(m_rx_buf, event.rx_amount);		
+//				DEBUG_UART_N(m_rx_buf, event.rx_amount);
 				
 				switch(SPI.RX.CmdType)
 				{
 					case SPI_CMD_SET_CHANNAL:
-						// 频点		
+						// 频点
 						if((SPI.RX.CmdData[0]&0x7F) <= 125)			
 						{
 							RADIO.TxChannal = SPI.RX.CmdData[0];
@@ -183,9 +183,12 @@ void spis_event_handler(nrf_drv_spis_event_t event)
 								}
 								break;
 							case RADIO_TYPE_INSTANT_ACK:
-//								printf("ACK \r\n");
-								RADIO_SendAck(SPI.RX.CmdData+20, 1, SPI.RX.CmdData[1]);									
-								break;							
+//								RADIO_SendAck(SPI.RX.CmdData+20, 1, SPI.RX.CmdData[1]);				
+								if(RINGBUF_GetStatus_nRF() != RINGBUF_STATUS_FULL_nRF)
+								{
+									RINGBUF_WriteData_nRF(SPI.RX.CmdData+2, SPI.RX.CmdLen-2, SPI.RX.CmdData[1]);													
+								}
+								break;
 							case RADIO_TYPE_INSTANT_USE:
 								if(RINGBUF_GetStatus_nRF() != RINGBUF_STATUS_FULL_nRF)
 								{
@@ -261,7 +264,7 @@ void SPI_DataHandler(void)
 	*/
 	
 	if(!RADIO.BusyFlg)				// RADIO系统空闲
-	{			
+	{
 		if((RINGBUF_GetStatus() != RINGBUF_STATUS_EMPTY))
 		{
 			// 从缓冲区中读取收到的SPI数据

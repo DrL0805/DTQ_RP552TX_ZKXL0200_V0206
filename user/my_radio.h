@@ -13,8 +13,9 @@
 #define 	 NRF_ENHANCE_TX_NUM					(2)					// 加强帧发送次数（总发送次数）
 #define      NRF_DEFAULT_TX_CHANNAL				(4)
 #define      NRF_DEFAULT_TX_POWER				(NRF_ESB_TX_POWER_4DBM)
-#define		 NRF_LINK_DATA_LEN				(17)		// 链路层定义数据长度
-
+#define		 NRF_LINK_DATA_LEN				(20)		// 链路层定义数据长度
+#define     NRF_DATA_PRO_VER                (0x42)	// 协议版本
+#define     NRF_DATA_DEV_ID                (0x01)	// 设备ID
 
 #define 	NRF_RX_DEV_ID						(0x01)
 #define 	NRF_TX_DEV_ID						(0x02)
@@ -32,6 +33,9 @@ typedef struct
 {
 	uint8_t			Len;			// ACK数量
 	uint8_t			Data[252];		// 保存答题器UID，每个占4字节
+	
+	uint8_t 		SeqNum;		// 帧号
+	uint8_t			PackNum;	// 包号
 }TX_PARAMETERS_T;
 
 

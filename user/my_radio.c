@@ -107,20 +107,20 @@ void RADIO_SendAck(uint8_t* UidBuf, uint8_t UidNum, uint32_t TxChannal)
 	*/
 	uint8_t TmpAckBuf[256], TmpAckLen;
 	
-	TmpAckLen = 17 + 3 + UidNum * 4;
+	TmpAckLen = NRF_LINK_DATA_LEN + 3 + UidNum * 4;
 	
 	TmpAckBuf[0] = 0x61;
 	memset(TmpAckBuf+1, 0x00, 8);			// 目标ID 源ID都为0
-	TmpAckBuf[9] = 0x01;
-	TmpAckBuf[10] = 0x20;
-	TmpAckBuf[11] = 0x00;
-	TmpAckBuf[12] = 0x00;
-	TmpAckBuf[13] = 0x00;
-	TmpAckBuf[14] = 3 + UidNum*4;			// PackLen
-	TmpAckBuf[15] = 0x52;					// DataType = ACK													
-	TmpAckBuf[16] = 1 + UidNum*4;			// DataLen
-	TmpAckBuf[17] = UidNum;				
-	memcpy(TmpAckBuf+18, UidBuf, UidNum*4);
+	TmpAckBuf[9] = NRF_DATA_DEV_ID;
+	TmpAckBuf[10] = NRF_DATA_PRO_VER;
+	TmpAckBuf[11] = 0x00;					// 帧号
+	memset(TmpAckBuf+12, 0x00, 4);			// 包号
+	TmpAckBuf[16] = 0x00;					// 扩展长度
+	TmpAckBuf[17] = 3 + UidNum*4;			// PackLen
+	TmpAckBuf[18] = 0x52;					// DataType = ACK
+	TmpAckBuf[19] = 1 + UidNum*4;			// DataLen
+	TmpAckBuf[20] = UidNum;
+	memcpy(TmpAckBuf+21, UidBuf, UidNum*4);
 	TmpAckBuf[TmpAckLen - 2] = XOR_Cal(TmpAckBuf+1, TmpAckLen - 3);		
 	TmpAckBuf[TmpAckLen - 1] = 0x21;												
 

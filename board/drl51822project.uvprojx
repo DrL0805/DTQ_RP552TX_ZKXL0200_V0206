@@ -48,7 +48,7 @@
             <InvalidFlash>1</InvalidFlash>
           </TargetStatus>
           <OutputDirectory>.\Outputs\</OutputDirectory>
-          <OutputName>DTQ_RP552TX_ZKXL0200_V0100</OutputName>
+          <OutputName>DTQ_RP552TX_ZKXL0200_V0204</OutputName>
           <CreateExecutable>1</CreateExecutable>
           <CreateLib>0</CreateLib>
           <CreateHexFile>1</CreateHexFile>
