@@ -44,8 +44,10 @@ typedef struct
 	uint8_t 				TxChannal;
 	uint8_t					TxPower;
 	
-	bool					BusyFlg;	
-
+	bool					BusyFlg;
+	
+	bool					TxPreFlg;			// 发送前导帧标志
+	bool					TxPreDataFlg;		// 发送前导帧数据标志
 	bool					HardTxBusyFlg;		// 硬件发送资源正在占用标志
 		
 	uint8_t					PreCnt;				// 发送前导帧计数
@@ -58,8 +60,8 @@ extern RADIO_PARAMETERS_T 		RADIO;
 
 extern uint32_t my_tx_esb_init(void);
 extern void RADIO_Init(void);
-extern void RADIO_SendAck(uint8_t* UidBuf, uint8_t UidNum, uint32_t TxChannal);
-void RADIO_SendHandler(void);
+extern void RADIO_SendHandler(void);
+extern void RADIO_SetTxPower(void);
 #endif 
 
 

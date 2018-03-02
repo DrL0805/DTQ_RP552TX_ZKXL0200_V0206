@@ -19,11 +19,7 @@ void nrf_esb_event_handler(nrf_esb_evt_t const * p_event)
         case NRF_ESB_EVENT_TX_SUCCESS:
 			if(0 == get_tx_fifo_count())
 			{
-				nrf_gpio_pin_clear(TX_PIN_NUMBER_1);
-				
 				SE2431L_SleepMode();
-				TIMER_TxOvertimeStop();				
-				RADIO.HardTxBusyFlg = false;
 			}
             break;
         case NRF_ESB_EVENT_TX_FAILED:
@@ -81,109 +77,167 @@ void RADIO_Init(void)
 	tx_payload.pipe   = NRF_PIPE;
 }
 
-// 发送一个ACK
-void RADIO_SendAck(uint8_t* UidBuf, uint8_t UidNum, uint32_t TxChannal)
+void RADIO_SetTxPower(void)
 {
-	/*
-		答题器2.4G链路层数据格式
-		0：包头0x61
-		1：源ID，
-		5：目标ID，
-		9：设备类型，答题器 = 0x11
-		10：协议版本 = 0x21
-		11：帧号 = 0
-		12：包号 = 0
-		13：扩展字节长度 = 0
-		14：包长，广播包长
-		----------包内容--------------
-			15：广播命令类型 = 0x52
-			16：广播命令长度 = 
-			---------命令内容---------
-				17：UidNum
-				19：UidBuf
-		------------------------------
-		XX：校验
-		XX：包尾0x21
-	*/
-	uint8_t TmpAckBuf[256], TmpAckLen;
-	
-	TmpAckLen = NRF_LINK_DATA_LEN + 3 + UidNum * 4;
-	
-	TmpAckBuf[0] = 0x61;
-	memset(TmpAckBuf+1, 0x00, 8);			// 目标ID 源ID都为0
-	TmpAckBuf[9] = NRF_DATA_DEV_ID;
-	TmpAckBuf[10] = NRF_DATA_PRO_VER;
-	TmpAckBuf[11] = 0x00;					// 帧号
-	memset(TmpAckBuf+12, 0x00, 4);			// 包号
-	TmpAckBuf[16] = 0x00;					// 扩展长度
-	TmpAckBuf[17] = 3 + UidNum*4;			// PackLen
-	TmpAckBuf[18] = 0x52;					// DataType = ACK
-	TmpAckBuf[19] = 1 + UidNum*4;			// DataLen
-	TmpAckBuf[20] = UidNum;
-	memcpy(TmpAckBuf+21, UidBuf, UidNum*4);
-	TmpAckBuf[TmpAckLen - 2] = XOR_Cal(TmpAckBuf+1, TmpAckLen - 3);		
-	TmpAckBuf[TmpAckLen - 1] = 0x21;												
-
-	if(RINGBUF_GetStatus_nRF() != RINGBUF_STATUS_FULL_nRF)
+	switch(RADIO.TxPower)					
 	{
-		RINGBUF_WriteData_nRF(TmpAckBuf, TmpAckLen, TxChannal);													
-	}	
+		case 1:
+			nrf_esb_set_tx_power(NRF_ESB_TX_POWER_0DBM);
+			SE2431L_BypassMode();
+			break;
+		case 2:
+			nrf_esb_set_tx_power(NRF_ESB_TX_POWER_4DBM);
+			SE2431L_BypassMode();								
+			break;
+		case 3:
+			nrf_esb_set_tx_power(NRF_ESB_TX_POWER_NEG4DBM);
+			SE2431L_TxMode();									
+			break;
+		case 4:
+			nrf_esb_set_tx_power(NRF_ESB_TX_POWER_0DBM);
+			SE2431L_TxMode();									
+			break;
+		case 5:
+			nrf_esb_set_tx_power(NRF_ESB_TX_POWER_4DBM);
+			SE2431L_TxMode();									
+			break;
+	}			
 }
-
 
 void RADIO_SendHandler(void)
 {
-	uint8_t TmpChannal;
+	uint8_t TmpPos;
+	uint32_t i;
 	
-	// 如果RADIO硬件资源不被占用，则发送RingBuffer里的数据
-	if(!RADIO.HardTxBusyFlg)
+	// 如果RADIO硬件资源不被占用，且SPI层有还未发送的2.4G数据
+	if(!RADIO.HardTxBusyFlg && (SPI._24gExitPos < SPI._24gEnterPos))
 	{
-		if((RINGBUF_GetStatus_nRF() != RINGBUF_STATUS_EMPTY_nRF))
+		TmpPos = SPI._24gExitPos % SPI_MAX_CACHE_SIZE;
+		
+		if(SPI_DATA_24G == SPI.DATA[TmpPos].Step)
 		{
-			RINGBUF_ReadData_nRF(tx_payload.data, &tx_payload.length, &TmpChannal);
-
-//			printf("Channal:%02X, Len:%02X \r\n", TmpChannal, tx_payload.length);
-//			DEBUG_UART_N(tx_payload.data, tx_payload.length);
+			SPI.DATA[TmpPos].Step = SPI_DATA_INVALID;
 			
-			// 通过%02X格式打印数据会导致程序卡死，其他打印方式则不会
-//			DEBUG_UART_1("%02X \r\n",tx_payload.length);
-			
-//			SE2431L_TxMode();
-			switch(RADIO.TxPower)					
+			switch(SPI.DATA[TmpPos].Data[4])
 			{
-				case 1:
-					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_0DBM);
-					SE2431L_BypassMode();
+				case RADIO_TYPE_USE_NEED_PRE:	// 有效数据，需发前导帧
+					RADIO.HardTxBusyFlg = true;
+					RADIO.PreCnt = 0;
+					TIMER0_Start(1);			// 开始前导帧定时器
 					break;
-				case 2:
-					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_4DBM);
-					SE2431L_BypassMode();								
+				case RADIO_TYPE_USE_NEEDLESS_PRE:	// 有效数据，无需发前导帧 
+					SPI._24gExitPos++;
+				
+					RADIO_SetTxPower();
+					nrf_esb_set_rf_channel(SPI.DATA[TmpPos].Data[5]);
+				
+					tx_payload.length = SPI.DATA[TmpPos].Data[3]-2;
+					memcpy(tx_payload.data, &SPI.DATA[TmpPos].Data[6], SPI.DATA[TmpPos].Data[3]-2);
+				
+					nrf_esb_write_payload(&tx_payload);	
 					break;
-				case 3:
-					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_NEG4DBM);
-					SE2431L_TxMode();									
+				case RADIO_TYPE_INSTANT_ACK:	// ACK
 					break;
-				case 4:
-					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_0DBM);
-					SE2431L_TxMode();									
+				case RADIO_TYPE_INSTANT_USE:	// 需优先发送的有效数据
 					break;
-				case 5:
-					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_4DBM);
-					SE2431L_TxMode();									
+				default:
 					break;
-			}			
-			nrf_esb_set_rf_channel(TmpChannal);
-			
-			RADIO.HardTxBusyFlg = true;
-			
-			nrf_gpio_pin_set(TX_PIN_NUMBER_1);
-			nrf_esb_write_payload(&tx_payload);
-			
-			TIMER_TxOvertimeStart();
-			
-		}		
+			}
+		}
+		else
+		{
+			SPI._24gExitPos++;
+		}
+	}
+	
+	if(RADIO.TxPreFlg)	// 发送前导帧
+	{
+		RADIO.TxPreFlg = false;
+		TmpPos = SPI._24gExitPos % SPI_MAX_CACHE_SIZE;
+		
+		tx_payload.length = 23;
+		memcpy(tx_payload.data, &SPI.DATA[TmpPos].Data[6], 17);	// Head~ExtendLen
+		tx_payload.data[17] = 3;													// 包长
+		tx_payload.data[18] = 0x51;														
+		tx_payload.data[19] = 0x01;
+		tx_payload.data[20] = RADIO.PreCnt;
+		tx_payload.data[tx_payload.length - 2] = XOR_Cal(tx_payload.data+1, tx_payload.length-3);				// 校验
+		tx_payload.data[tx_payload.length - 1] = 0x21;									// 包尾	
+		
+		RADIO_SetTxPower();
+		nrf_esb_set_rf_channel(SPI.DATA[TmpPos].Data[5]);
+		nrf_esb_write_payload(&tx_payload);			
+	}
+	
+	if(RADIO.TxPreDataFlg)	// 发送带有前导帧的有效数据
+	{
+		RADIO.TxPreDataFlg = false;
+		RADIO.HardTxBusyFlg = false;
+		TmpPos = SPI._24gExitPos % SPI_MAX_CACHE_SIZE;
+		SPI._24gExitPos++;
+		
+		tx_payload.length = SPI.DATA[TmpPos].Data[3]-2;
+		memcpy(tx_payload.data, &SPI.DATA[TmpPos].Data[6], SPI.DATA[TmpPos].Data[3]-2);
+		
+		RADIO_SetTxPower();
+		nrf_esb_set_rf_channel(SPI.DATA[TmpPos].Data[5]);		
+		nrf_esb_write_payload(&tx_payload);
 	}
 }
+
+//void RADIO_SendHandler(void)
+//{
+//	uint8_t TmpChannal;
+//	
+//	// 如果RADIO硬件资源不被占用，则发送RingBuffer里的数据
+//	if(!RADIO.HardTxBusyFlg)
+//	{
+//		if((RINGBUF_GetStatus_nRF() != RINGBUF_STATUS_EMPTY_nRF))
+//		{
+//			RINGBUF_ReadData_nRF(tx_payload.data, &tx_payload.length, &TmpChannal);
+
+////			printf("Channal:%02X, Len:%02X \r\n", TmpChannal, tx_payload.length);
+////			DEBUG_UART_N(tx_payload.data, tx_payload.length);
+//			
+//			// 通过%02X格式打印数据会导致程序卡死，其他打印方式则不会
+////			DEBUG_UART_1("%02X \r\n",tx_payload.length);
+//			
+////			SE2431L_TxMode();
+//			switch(RADIO.TxPower)					
+//			{
+//				case 1:
+//					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_0DBM);
+//					SE2431L_BypassMode();
+//					break;
+//				case 2:
+//					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_4DBM);
+//					SE2431L_BypassMode();								
+//					break;
+//				case 3:
+//					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_NEG4DBM);
+//					SE2431L_TxMode();									
+//					break;
+//				case 4:
+//					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_0DBM);
+//					SE2431L_TxMode();									
+//					break;
+//				case 5:
+//					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_4DBM);
+//					SE2431L_TxMode();									
+//					break;
+//			}			
+//			nrf_esb_set_rf_channel(TmpChannal);
+//			
+//			RADIO.HardTxBusyFlg = true;
+//			
+//			nrf_gpio_pin_set(TX_PIN_NUMBER_1);
+//			nrf_esb_write_payload(&tx_payload);
+//			
+//			TIMER_TxOvertimeStart();
+//			
+//		}		
+//	}
+//}
 
 
 

@@ -93,7 +93,7 @@ void spi_gpio_init(void)
 
 /* 产生低电平脉冲，通知stm32中断读取SPI数据 */
 void spi_trigger_irq(void)
-{		
+{
 	static uint8_t SpiPinInitFlg = false;
 	
 	if(false == SpiPinInitFlg)
@@ -109,125 +109,255 @@ void spi_trigger_irq(void)
 
 void spis_event_handler(nrf_drv_spis_event_t event)
 {
+	uint8_t TmpPos;
+	
 	switch(event.evt_type)
 	{
 		case NRF_DRV_SPIS_BUFFERS_SET_DONE:
 			break;
 		case NRF_DRV_SPIS_XFER_DONE:
-//			nrf_gpio_pin_set(TX_PIN_NUMBER_1);
-			/*
-				SPI层数据格式：
-					0：		Head固定 0x86
-					1：		DevId
-					2：		CmdType
-					3：		CmdLen
-					4~之后：CmdData
-						4：DataType，有效数据/ack/是否需要发送前导帧
-						5：发送频点
-						6~之后：需发送的2.4G数据
-			*/	
-			
 			//包头、包尾、数据类型、XOR校验
 			if( (0x86              == m_rx_buf[0])       &&
 				(NRF_TX_DEV_ID     == m_rx_buf[1])       &&
 				(0x76              == m_rx_buf[event.rx_amount - 1]) &&				
 				m_rx_buf[event.rx_amount - 2] == XOR_Cal(m_rx_buf+1, event.rx_amount - 3) )
-			{
-			
-				SPI.RX.Head 		= m_rx_buf[0];
-				SPI.RX.DevId 		= m_rx_buf[1];	
-				SPI.RX.CmdType 		= m_rx_buf[2];	
-				SPI.RX.CmdLen 		= m_rx_buf[3];
-				memcpy(SPI.RX.CmdData, m_rx_buf+4, SPI.RX.CmdLen);
-				SPI.RX.Xor 			= m_rx_buf[4+SPI.RX.CmdLen];
-				SPI.RX.End 			= m_rx_buf[5+SPI.RX.CmdLen];
-
-//				DEBUG_UART_N(m_rx_buf, 6);
-//				DEBUG_UART_N(m_rx_buf, event.rx_amount);
-				
-				switch(SPI.RX.CmdType)
+			{				
+				if((SPI.SpiEnterPos - SPI.SpiExitPos) < SPI_MAX_CACHE_SIZE)
 				{
-					case SPI_CMD_SET_CHANNAL:
-						// 频点
-						if((SPI.RX.CmdData[0]&0x7F) <= 125)			
-						{
-							RADIO.TxChannal = SPI.RX.CmdData[0];
-							nrf_esb_set_rf_channel(RADIO.TxChannal);															
-						}
-						
-						// 发送功率和发送方式
-						RADIO.TxPower = SPI.RX.CmdData[1];
-						
-						// 相关参数写入FLASH
-						FLASH_WriteAppData();
-						
-						spi_slave_tx_buffers_init(SPI_CMD_SET_CHANNAL);	
-						SPI.SpiTriggerIrqFlg = true;							
-						break;
-					case SPI_CMD_GET_STATE:						
-						spi_slave_tx_buffers_init(SPI_CMD_GET_STATE);	
-						break;
-					case SPI_CMD_SEND_24G_DATA:
-						switch(SPI.RX.CmdData[0])
-						{
-							case RADIO_TYPE_USE_NEED_PRE:
-							case RADIO_TYPE_USE_NEEDLESS_PRE:
-								if(RINGBUF_GetStatus() != RINGBUF_STATUS_FULL)
-								{
-									RINGBUF_WriteData(m_rx_buf,event.rx_amount);
-									spi_slave_tx_buffers_init(SPI_CMD_SEND_24G_DATA);														
-								}
-								else
-								{
-									spi_debug("RINGBUF_STATUS_FULL \r\n");
-								}
-								break;
-							case RADIO_TYPE_INSTANT_ACK:
-//								RADIO_SendAck(SPI.RX.CmdData+20, 1, SPI.RX.CmdData[1]);				
-								if(RINGBUF_GetStatus_nRF() != RINGBUF_STATUS_FULL_nRF)
-								{
-									RINGBUF_WriteData_nRF(SPI.RX.CmdData+2, SPI.RX.CmdLen-2, SPI.RX.CmdData[1]);													
-								}
-								break;
-							case RADIO_TYPE_INSTANT_USE:
-								if(RINGBUF_GetStatus_nRF() != RINGBUF_STATUS_FULL_nRF)
-								{
-									RINGBUF_WriteData_nRF(SPI.RX.CmdData+2, SPI.RX.CmdLen-2, SPI.RX.CmdData[1]);													
-								}
-								else
-								{
-									spi_debug("RINGBUF_STATUS_FULL_nRF \r\n");
-								}								
-								break;
-							default:
-								break;
-						}
-						spi_slave_tx_buffers_init(SPI_CMD_SEND_24G_DATA);
-						SPI.SpiTriggerIrqFlg = true;
-						break;
-					default:
-						break;
-				}					
-			}
-			// SPIS每次收发完数据后需要重新SET下
-			nrf_drv_spis_buffers_set(&spis,m_tx_buf,TX_BUF_SIZE,m_rx_buf,RX_BUF_SIZE);
-			
-			// nrf_drv_spis_buffers_set完后，再通知stm32读取新的spi数据
-			if(SPI.SpiTriggerIrqFlg)
-			{
-				SPI.SpiTriggerIrqFlg = false;
-				spi_trigger_irq();			
+					TmpPos = SPI.SpiEnterPos % SPI_MAX_CACHE_SIZE;
+					SPI.SpiEnterPos++;
+					
+					SPI.DATA[TmpPos].Step = SPI_DATA_NEW;
+					memcpy(SPI.DATA[TmpPos].Data, m_rx_buf, event.rx_amount);
+				}
+				else
+				{
+					// 开辟的SPI缓存过小
+				}
 			}
 			
-//			nrf_gpio_pin_clear(TX_PIN_NUMBER_1);
+			// SPIS每次收发完数据后需要重新SET下，才能接受新的数据
+			nrf_drv_spis_buffers_set(&spis,m_tx_buf,TX_BUF_SIZE,m_rx_buf,RX_BUF_SIZE);			
 			break;
 		case NRF_DRV_SPIS_EVT_TYPE_MAX:
-			
 			break;
 		default:
 			break;
 	}
 }
+
+void SPI_DataHandler(void)
+{
+	/*
+		SPI层数据格式：
+			0：		Head固定 0x86
+			1：		DevId
+			2：		CmdType
+			3：		CmdLen
+			4~之后：CmdData
+				4：DataType，有效数据/ack/是否需要发送前导帧
+				5：发送频点
+				6~之后：需发送的2.4G数据
+	*/		
+	uint8_t TmpPos;
+	
+	if(SPI.SpiExitPos < SPI.SpiEnterPos)
+	{
+		TmpPos = SPI.SpiExitPos % SPI_MAX_CACHE_SIZE;
+		SPI.SpiExitPos++;
+		
+		switch(SPI.DATA[TmpPos].Data[2])
+		{
+			case SPI_CMD_SET_CHANNAL:
+				if((SPI.DATA[TmpPos].Data[4]&0x7F) <= 125)			
+				{
+					RADIO.TxChannal = SPI.DATA[TmpPos].Data[4];		// 发送频点
+					RADIO.TxPower = SPI.DATA[TmpPos].Data[5];		// 发送功率和发送方式
+					FLASH_WriteAppData();							// 相关参数写入FLASH
+					
+					nrf_esb_set_rf_channel(RADIO.TxChannal);															
+				}
+				
+				SPI.DATA[TmpPos].Step = SPI_DATA_INVALID;
+				
+				spi_slave_tx_buffers_init(SPI_CMD_SET_CHANNAL);	
+				SPI.SpiTriggerIrqFlg = true;							
+				break;
+			case SPI_CMD_GET_STATE:						
+				SPI.DATA[TmpPos].Step = SPI_DATA_INVALID;
+				spi_slave_tx_buffers_init(SPI_CMD_GET_STATE);	
+				break;
+			case SPI_CMD_SEND_24G_DATA:
+				switch(SPI.DATA[TmpPos].Data[4])
+				{
+					case RADIO_TYPE_USE_NEED_PRE:
+					case RADIO_TYPE_USE_NEEDLESS_PRE:	// 有效数据，按顺序发送
+						SPI.DATA[TmpPos].Step = SPI_DATA_24G;
+						SPI._24gEnterPos = SPI.SpiExitPos;
+						spi_slave_tx_buffers_init(SPI_CMD_SEND_24G_DATA);														
+						break;
+					case RADIO_TYPE_INSTANT_ACK:		// ACK，立即发送
+						SPI.DATA[TmpPos].Step = SPI_DATA_INVALID;
+					
+						RADIO_SetTxPower();
+						nrf_esb_set_rf_channel(SPI.DATA[TmpPos].Data[5]);
+						
+						tx_payload.length = SPI.DATA[TmpPos].Data[3]-2;
+						memcpy(tx_payload.data, &SPI.DATA[TmpPos].Data[6], SPI.DATA[TmpPos].Data[3]-2);
+						
+						nrf_esb_write_payload(&tx_payload);
+						break;
+					case RADIO_TYPE_INSTANT_USE:		// 有效数据，立即发送
+						SPI.DATA[TmpPos].Step = SPI_DATA_INVALID;
+						
+						RADIO_SetTxPower();
+						nrf_esb_set_rf_channel(SPI.DATA[TmpPos].Data[5]);
+					
+						tx_payload.length = SPI.DATA[TmpPos].Data[3]-2;
+						memcpy(tx_payload.data, &SPI.DATA[TmpPos].Data[6], SPI.DATA[TmpPos].Data[3]-2);
+						
+						nrf_esb_write_payload(&tx_payload);							
+						break;
+					default:
+						break;
+				}
+				spi_slave_tx_buffers_init(SPI_CMD_SEND_24G_DATA);
+				SPI.SpiTriggerIrqFlg = true;
+				break;
+			default:
+				break;
+		}// switch END
+		
+		if(SPI.SpiTriggerIrqFlg)
+		{
+			SPI.SpiTriggerIrqFlg = false;
+			spi_trigger_irq();			
+		}		
+		
+	}// if END
+}
+
+//void spis_event_handler(nrf_drv_spis_event_t event)
+//{
+//	switch(event.evt_type)
+//	{
+//		case NRF_DRV_SPIS_BUFFERS_SET_DONE:
+//			break;
+//		case NRF_DRV_SPIS_XFER_DONE:
+////			nrf_gpio_pin_set(TX_PIN_NUMBER_1);
+//			/*
+//				SPI层数据格式：
+//					0：		Head固定 0x86
+//					1：		DevId
+//					2：		CmdType
+//					3：		CmdLen
+//					4~之后：CmdData
+//						4：DataType，有效数据/ack/是否需要发送前导帧
+//						5：发送频点
+//						6~之后：需发送的2.4G数据
+//			*/	
+//			
+//			//包头、包尾、数据类型、XOR校验
+//			if( (0x86              == m_rx_buf[0])       &&
+//				(NRF_TX_DEV_ID     == m_rx_buf[1])       &&
+//				(0x76              == m_rx_buf[event.rx_amount - 1]) &&				
+//				m_rx_buf[event.rx_amount - 2] == XOR_Cal(m_rx_buf+1, event.rx_amount - 3) )
+//			{
+//			
+//				SPI.RX.Head 		= m_rx_buf[0];
+//				SPI.RX.DevId 		= m_rx_buf[1];	
+//				SPI.RX.CmdType 		= m_rx_buf[2];	
+//				SPI.RX.CmdLen 		= m_rx_buf[3];
+//				memcpy(SPI.RX.CmdData, m_rx_buf+4, SPI.RX.CmdLen);
+//				SPI.RX.Xor 			= m_rx_buf[4+SPI.RX.CmdLen];
+//				SPI.RX.End 			= m_rx_buf[5+SPI.RX.CmdLen];
+
+////				DEBUG_UART_N(m_rx_buf, 6);
+////				DEBUG_UART_N(m_rx_buf, event.rx_amount);
+//				
+//				switch(SPI.RX.CmdType)
+//				{
+//					case SPI_CMD_SET_CHANNAL:
+//						// 频点
+//						if((SPI.RX.CmdData[0]&0x7F) <= 125)			
+//						{
+//							RADIO.TxChannal = SPI.RX.CmdData[0];
+//							nrf_esb_set_rf_channel(RADIO.TxChannal);															
+//						}
+//						
+//						// 发送功率和发送方式
+//						RADIO.TxPower = SPI.RX.CmdData[1];
+//						
+//						// 相关参数写入FLASH
+//						FLASH_WriteAppData();
+//						
+//						spi_slave_tx_buffers_init(SPI_CMD_SET_CHANNAL);	
+//						SPI.SpiTriggerIrqFlg = true;							
+//						break;
+//					case SPI_CMD_GET_STATE:						
+//						spi_slave_tx_buffers_init(SPI_CMD_GET_STATE);	
+//						break;
+//					case SPI_CMD_SEND_24G_DATA:
+//						switch(SPI.RX.CmdData[0])
+//						{
+//							case RADIO_TYPE_USE_NEED_PRE:
+//							case RADIO_TYPE_USE_NEEDLESS_PRE:
+//								if(RINGBUF_GetStatus() != RINGBUF_STATUS_FULL)
+//								{
+//									RINGBUF_WriteData(m_rx_buf,event.rx_amount);
+//									spi_slave_tx_buffers_init(SPI_CMD_SEND_24G_DATA);														
+//								}
+//								else
+//								{
+//									spi_debug("RINGBUF_STATUS_FULL \r\n");
+//								}
+//								break;
+//							case RADIO_TYPE_INSTANT_ACK:
+////								RADIO_SendAck(SPI.RX.CmdData+20, 1, SPI.RX.CmdData[1]);				
+//								if(RINGBUF_GetStatus_nRF() != RINGBUF_STATUS_FULL_nRF)
+//								{
+//									RINGBUF_WriteData_nRF(SPI.RX.CmdData+2, SPI.RX.CmdLen-2, SPI.RX.CmdData[1]);													
+//								}
+//								break;
+//							case RADIO_TYPE_INSTANT_USE:
+//								if(RINGBUF_GetStatus_nRF() != RINGBUF_STATUS_FULL_nRF)
+//								{
+//									RINGBUF_WriteData_nRF(SPI.RX.CmdData+2, SPI.RX.CmdLen-2, SPI.RX.CmdData[1]);													
+//								}
+//								else
+//								{
+//									spi_debug("RINGBUF_STATUS_FULL_nRF \r\n");
+//								}								
+//								break;
+//							default:
+//								break;
+//						}
+//						spi_slave_tx_buffers_init(SPI_CMD_SEND_24G_DATA);
+//						SPI.SpiTriggerIrqFlg = true;
+//						break;
+//					default:
+//						break;
+//				}					
+//			}
+//			// SPIS每次收发完数据后需要重新SET下
+//			nrf_drv_spis_buffers_set(&spis,m_tx_buf,TX_BUF_SIZE,m_rx_buf,RX_BUF_SIZE);
+//			
+//			// nrf_drv_spis_buffers_set完后，再通知stm32读取新的spi数据
+//			if(SPI.SpiTriggerIrqFlg)
+//			{
+//				SPI.SpiTriggerIrqFlg = false;
+//				spi_trigger_irq();			
+//			}
+//			
+////			nrf_gpio_pin_clear(TX_PIN_NUMBER_1);
+//			break;
+//		case NRF_DRV_SPIS_EVT_TYPE_MAX:
+//			
+//			break;
+//		default:
+//			break;
+//	}
+//}
 
 void my_spi_slave_init(void)
 {
@@ -247,58 +377,58 @@ void my_spi_slave_init(void)
 	APP_ERROR_CHECK(nrf_drv_spis_buffers_set(&spis,m_tx_buf,TX_BUF_SIZE,m_rx_buf,RX_BUF_SIZE));
 }
 
-void SPI_DataHandler(void)
-{
-	uint8_t tmp_ringbuf_len = 0;
-	uint8_t tmp_ringbuf_buf[255];
-	/*
-		SPI层数据格式：
-			0：		Head固定 0x86
-			1：		DevId
-			2：		CmdType
-			3：		CmdLen
-			4~之后：CmdData
-				4：DataType，有效数据/ack/是否需要发送前导帧
-				5：发送频点
-				6~之后：需发送的2.4G数据
-	*/
-	
-	if(!RADIO.BusyFlg)				// RADIO系统空闲
-	{
-		if((RINGBUF_GetStatus() != RINGBUF_STATUS_EMPTY))
-		{
-			// 从缓冲区中读取收到的SPI数据
-			RINGBUF_ReadData(tmp_ringbuf_buf,&tmp_ringbuf_len);
+//void SPI_DataHandler(void)
+//{
+//	uint8_t tmp_ringbuf_len = 0;
+//	uint8_t tmp_ringbuf_buf[255];
+//	/*
+//		SPI层数据格式：
+//			0：		Head固定 0x86
+//			1：		DevId
+//			2：		CmdType
+//			3：		CmdLen
+//			4~之后：CmdData
+//				4：DataType，有效数据/ack/是否需要发送前导帧
+//				5：发送频点
+//				6~之后：需发送的2.4G数据
+//	*/
+//	
+//	if(!RADIO.BusyFlg)				// RADIO系统空闲
+//	{
+//		if((RINGBUF_GetStatus() != RINGBUF_STATUS_EMPTY))
+//		{
+//			// 从缓冲区中读取收到的SPI数据
+//			RINGBUF_ReadData(tmp_ringbuf_buf,&tmp_ringbuf_len);
 
-			RADIO.TX.Len = tmp_ringbuf_buf[3] - 2;
-			memcpy(RADIO.TX.Data, tmp_ringbuf_buf+6, RADIO.TX.Len);
-			
-			RADIO.TxChannal  = tmp_ringbuf_buf[5];
-			
-			switch(tmp_ringbuf_buf[4])
-			{
-				case RADIO_TYPE_USE_NEED_PRE:	// 有效数据，需发前导帧
-					RADIO.BusyFlg = true;
-					RADIO.PreCnt = 0;
-					nrf_transmit_timeout_start(1);
-					TIMER_TxPreOvertimeStart();
-					break;
-				case RADIO_TYPE_USE_NEEDLESS_PRE:	// 有效数据，无需发前导帧 
-					RADIO.BusyFlg = true;
-					RADIO.PreCnt = NRF_PRE_TX_NUMBER;
-					nrf_transmit_timeout_start(1);
-					TIMER_TxPreOvertimeStart();				
-					break;
-				case RADIO_TYPE_INSTANT_ACK:	// ACK
-					break;
-				case RADIO_TYPE_INSTANT_USE:	// 需优先发送的有效数据
-					break;
-				default:
-					break;
-			}
-		}
-	}	
-}
+//			RADIO.TX.Len = tmp_ringbuf_buf[3] - 2;
+//			memcpy(RADIO.TX.Data, tmp_ringbuf_buf+6, RADIO.TX.Len);
+//			
+//			RADIO.TxChannal  = tmp_ringbuf_buf[5];
+//			
+//			switch(tmp_ringbuf_buf[4])
+//			{
+//				case RADIO_TYPE_USE_NEED_PRE:	// 有效数据，需发前导帧
+//					RADIO.BusyFlg = true;
+//					RADIO.PreCnt = 0;
+//					nrf_transmit_timeout_start(1);
+//					TIMER_TxPreOvertimeStart();
+//					break;
+//				case RADIO_TYPE_USE_NEEDLESS_PRE:	// 有效数据，无需发前导帧 
+//					RADIO.BusyFlg = true;
+//					RADIO.PreCnt = NRF_PRE_TX_NUMBER;
+//					nrf_transmit_timeout_start(1);
+//					TIMER_TxPreOvertimeStart();				
+//					break;
+//				case RADIO_TYPE_INSTANT_ACK:	// ACK
+//					break;
+//				case RADIO_TYPE_INSTANT_USE:	// 需优先发送的有效数据
+//					break;
+//				default:
+//					break;
+//			}
+//		}
+//	}	
+//}
 
 
 

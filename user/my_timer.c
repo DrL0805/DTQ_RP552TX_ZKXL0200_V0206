@@ -175,8 +175,7 @@ void TIMER_TxOvertimeStop(void)
 
 void TIMER_TxOvertimeHandler(void * p_context)
 {
-	timer_debug("r \r\n");
-	RADIO.HardTxBusyFlg = false;
+
 }
 
 void TIMER_TxPreOvertimeStart(void)

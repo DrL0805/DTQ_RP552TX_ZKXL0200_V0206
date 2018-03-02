@@ -8,6 +8,58 @@
 #define main_debug(...)                    
 #endif 
 
+void TIMER0_Init(void)
+{
+	NRF_TIMER0->INTENSET |= 0x01 << 16;		// 使能COMPARE[0]中断
+	NRF_TIMER0->MODE = 0;					// TIMER模式
+	NRF_TIMER0->BITMODE = 3;				// 32位宽
+	NRF_TIMER0->PRESCALER = 9;				// 分频系数
+	
+	NVIC_ClearPendingIRQ(TIMER0_IRQn);
+    NVIC_SetPriority(TIMER0_IRQn, 1);
+    NVIC_EnableIRQ(TIMER0_IRQn);		
+}
+
+void TIMER0_Start(uint32_t number_of_ms)
+{
+	NRF_TIMER0->TASKS_CLEAR=1;	
+	
+	// 2^9分频后，TIMER计数频率为31250Hz，每32us tick一次，即1ms tick31.25次，以下方式为了取整数
+    NRF_TIMER0->CC[0]          = number_of_ms * 31;
+    NRF_TIMER0->CC[0]         += number_of_ms / 4; 
+	
+	NRF_TIMER0->TASKS_START = 1;
+}
+
+void TIMER0_Stop(void)
+{
+	NRF_TIMER0->TASKS_CLEAR = 1;
+	NRF_TIMER0->TASKS_STOP = 1;	
+}
+
+void TIMER0_IRQHandler(void)
+{
+	NRF_TIMER0->EVENTS_COMPARE[0] = 0;			// EVENT触发后一定要清空，否则会一直触发EVENT事件
+	NRF_TIMER0->TASKS_CLEAR = 1;				// 清COUNTER值，从零开始计数
+	NRF_TIMER0->TASKS_STOP = 1;					// 停止定时器
+	
+	if(++RADIO.PreCnt < NRF_PRE_TX_NUMBER)
+	{
+		TIMER0_Start(1);
+		RADIO.TxPreFlg = true;
+	}
+	else
+	{
+		RADIO.TxPreDataFlg = true;
+	}
+}
+
+
+
+
+
+
+
 void DEBUG_FUN(void)
 {
 	nrf_gpio_pin_set(TX_PIN_NUMBER_1);
@@ -23,7 +75,7 @@ int main (void)
 	
 	nrf_gpio_cfg_output(TX_PIN_NUMBER_1);	// 示波器查看
 	
-//	debug_uart_init();						// 别忘答题器和接收器串口脚不一样
+	debug_uart_init();						// 别忘答题器和接收器串口脚不一样
 	
 	timers_init();
 	SE2431L_GpioInit();
@@ -33,9 +85,12 @@ int main (void)
 	spi_gpio_init();
 	my_spi_slave_init();
 	
+	TIMER0_Init();
+//	TIMER0_Start(1000);
+	
 	RADIO_Init();
 
-	WDT_Init();
+//	WDT_Init();
 	
 	rtc_calibrate_timeout_start();			//RTC校准定时器
 
@@ -43,12 +98,10 @@ int main (void)
 	
 	while(true)
 	{
-		SPI_DataHandler();	
+		SPI_DataHandler();
 		RADIO_SendHandler();
 		
-		WDT_FeedDog();	
-		
-//		DEBUG_FUN();
+//		WDT_FeedDog();	
 	}
 }
 
