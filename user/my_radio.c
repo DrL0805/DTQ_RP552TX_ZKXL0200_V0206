@@ -19,6 +19,8 @@ void nrf_esb_event_handler(nrf_esb_evt_t const * p_event)
         case NRF_ESB_EVENT_TX_SUCCESS:
 			if(0 == get_tx_fifo_count())
 			{
+//				SBQ_DEBUG_PIN_CLEAR();
+				SBQ_DEBUG_PIN_TOG();
 				SE2431L_SleepMode();
 			}
             break;
@@ -109,47 +111,6 @@ void RADIO_SendHandler(void)
 	uint8_t TmpPos;
 	uint32_t i;
 	
-	// 如果RADIO硬件资源不被占用，且SPI层有还未发送的2.4G数据
-	if(!RADIO.HardTxBusyFlg && (SPI._24gExitPos < SPI._24gEnterPos))
-	{
-		TmpPos = SPI._24gExitPos % SPI_MAX_CACHE_SIZE;
-		
-		if(SPI_DATA_24G == SPI.DATA[TmpPos].Step)
-		{
-			SPI.DATA[TmpPos].Step = SPI_DATA_INVALID;
-			
-			switch(SPI.DATA[TmpPos].Data[4])
-			{
-				case RADIO_TYPE_USE_NEED_PRE:	// 有效数据，需发前导帧
-					RADIO.HardTxBusyFlg = true;
-					RADIO.PreCnt = 0;
-					TIMER0_Start(1);			// 开始前导帧定时器
-					break;
-				case RADIO_TYPE_USE_NEEDLESS_PRE:	// 有效数据，无需发前导帧 
-					SPI._24gExitPos++;
-				
-					RADIO_SetTxPower();
-					nrf_esb_set_rf_channel(SPI.DATA[TmpPos].Data[5]);
-				
-					tx_payload.length = SPI.DATA[TmpPos].Data[3]-2;
-					memcpy(tx_payload.data, &SPI.DATA[TmpPos].Data[6], SPI.DATA[TmpPos].Data[3]-2);
-				
-					nrf_esb_write_payload(&tx_payload);	
-					break;
-				case RADIO_TYPE_INSTANT_ACK:	// ACK
-					break;
-				case RADIO_TYPE_INSTANT_USE:	// 需优先发送的有效数据
-					break;
-				default:
-					break;
-			}
-		}
-		else
-		{
-			SPI._24gExitPos++;
-		}
-	}
-	
 	if(RADIO.TxPreFlg)	// 发送前导帧
 	{
 		RADIO.TxPreFlg = false;
@@ -166,8 +127,9 @@ void RADIO_SendHandler(void)
 		
 		RADIO_SetTxPower();
 		nrf_esb_set_rf_channel(SPI.DATA[TmpPos].Data[5]);
-		nrf_esb_write_payload(&tx_payload);			
-	}
+		nrf_esb_write_payload(&tx_payload);
+//		SBQ_DEBUG_PIN_SET();
+	}	
 	
 	if(RADIO.TxPreDataFlg)	// 发送带有前导帧的有效数据
 	{
@@ -182,62 +144,51 @@ void RADIO_SendHandler(void)
 		RADIO_SetTxPower();
 		nrf_esb_set_rf_channel(SPI.DATA[TmpPos].Data[5]);		
 		nrf_esb_write_payload(&tx_payload);
+//		SBQ_DEBUG_PIN_TOG();
+	}	
+	
+	// 如果RADIO硬件资源不被占用，且SPI层有还未发送的2.4G数据
+	if(!RADIO.HardTxBusyFlg && (SPI._24gExitPos < SPI._24gEnterPos))
+	{
+		TmpPos = SPI._24gExitPos % SPI_MAX_CACHE_SIZE;
+		
+		if(SPI_DATA_24G == SPI.DATA[TmpPos].State)
+		{
+			SPI.DATA[TmpPos].State = SPI_DATA_INVALID;
+			
+			switch(SPI.DATA[TmpPos].Data[4])
+			{
+				case RADIO_TYPE_USE_NEED_PRE:	// 有效数据，需发前导帧
+					RADIO.HardTxBusyFlg = true;
+					RADIO.PreCnt = 0;
+					TIMER0_Start(1);			// 开始前导帧定时器
+					break;
+				case RADIO_TYPE_USE_NEEDLESS_PRE:	// 有效数据，无需发前导帧 
+					SPI._24gExitPos++;
+				
+					RADIO_SetTxPower();
+					nrf_esb_set_rf_channel(SPI.DATA[TmpPos].Data[5]);
+				
+					tx_payload.length = SPI.DATA[TmpPos].Data[3]-2;
+					memcpy(tx_payload.data, &SPI.DATA[TmpPos].Data[6], SPI.DATA[TmpPos].Data[3]-2);
+					
+					nrf_esb_write_payload(&tx_payload);
+//					SBQ_DEBUG_PIN_TOG();
+					break;
+				case RADIO_TYPE_INSTANT_ACK:	// ACK
+					break;
+				case RADIO_TYPE_INSTANT_USE:	// 需优先发送的有效数据
+					break;
+				default:
+					break;
+			}
+		}
+		else
+		{
+			SPI._24gExitPos++;
+		}
 	}
 }
-
-//void RADIO_SendHandler(void)
-//{
-//	uint8_t TmpChannal;
-//	
-//	// 如果RADIO硬件资源不被占用，则发送RingBuffer里的数据
-//	if(!RADIO.HardTxBusyFlg)
-//	{
-//		if((RINGBUF_GetStatus_nRF() != RINGBUF_STATUS_EMPTY_nRF))
-//		{
-//			RINGBUF_ReadData_nRF(tx_payload.data, &tx_payload.length, &TmpChannal);
-
-////			printf("Channal:%02X, Len:%02X \r\n", TmpChannal, tx_payload.length);
-////			DEBUG_UART_N(tx_payload.data, tx_payload.length);
-//			
-//			// 通过%02X格式打印数据会导致程序卡死，其他打印方式则不会
-////			DEBUG_UART_1("%02X \r\n",tx_payload.length);
-//			
-////			SE2431L_TxMode();
-//			switch(RADIO.TxPower)					
-//			{
-//				case 1:
-//					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_0DBM);
-//					SE2431L_BypassMode();
-//					break;
-//				case 2:
-//					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_4DBM);
-//					SE2431L_BypassMode();								
-//					break;
-//				case 3:
-//					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_NEG4DBM);
-//					SE2431L_TxMode();									
-//					break;
-//				case 4:
-//					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_0DBM);
-//					SE2431L_TxMode();									
-//					break;
-//				case 5:
-//					nrf_esb_set_tx_power(NRF_ESB_TX_POWER_4DBM);
-//					SE2431L_TxMode();									
-//					break;
-//			}			
-//			nrf_esb_set_rf_channel(TmpChannal);
-//			
-//			RADIO.HardTxBusyFlg = true;
-//			
-//			nrf_gpio_pin_set(TX_PIN_NUMBER_1);
-//			nrf_esb_write_payload(&tx_payload);
-//			
-//			TIMER_TxOvertimeStart();
-//			
-//		}		
-//	}
-//}
 
 
 

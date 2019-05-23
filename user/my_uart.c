@@ -9,14 +9,14 @@ void debug_uart_init(void)//串口初始化函数
 
 }	
 
-
 void UART_PrintfN(uint8_t * p_buffer, uint32_t len)
 {
     for (uint32_t index = 0; index <  len; index++)
     {
-        printf("%02X ", p_buffer[index]);
+		simple_uart_put(p_buffer[index]);
+//        printf("%02X ", p_buffer[index]);	
     }
-    printf("\r\n");
+//    printf("\r\n");
 }
 		
 /************************************************************** 

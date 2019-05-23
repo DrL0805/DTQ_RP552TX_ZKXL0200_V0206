@@ -33,7 +33,12 @@
 
 // 软件版本 -----------------------------------------------------------
 #define 	VERSION_LEVEL_1		(2)		//一级版本号
-#define     VERSION_LEVEL_2		(4)		//二级版本号
+#define     VERSION_LEVEL_2		(6)		//二级版本号
+
+// 示波器
+#define SBQ_DEBUG_PIN_SET()		nrf_gpio_pin_set(TX_PIN_NUMBER_1)
+#define SBQ_DEBUG_PIN_CLEAR()	nrf_gpio_pin_clear(TX_PIN_NUMBER_1)
+#define SBQ_DEBUG_PIN_TOG()		nrf_gpio_pin_toggle(TX_PIN_NUMBER_1)
 
 uint8_t XOR_Cal(uint8_t * dat,uint16_t length);
 void gpio_default_init(void);

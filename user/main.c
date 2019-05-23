@@ -8,6 +8,9 @@
 #define main_debug(...)                    
 #endif 
 
+/*
+	TIMER0作为发送前导帧的精确定时器
+*/
 void TIMER0_Init(void)
 {
 	NRF_TIMER0->INTENSET |= 0x01 << 16;		// 使能COMPARE[0]中断
@@ -33,17 +36,16 @@ void TIMER0_Start(uint32_t number_of_ms)
 
 void TIMER0_Stop(void)
 {
-	NRF_TIMER0->TASKS_CLEAR = 1;
-	NRF_TIMER0->TASKS_STOP = 1;	
+	NRF_TIMER0->TASKS_CLEAR = 1;	// 清COUNTER值，从零开始计数
+	NRF_TIMER0->TASKS_STOP = 1;		// 停止定时器
 }
 
 void TIMER0_IRQHandler(void)
 {
 	NRF_TIMER0->EVENTS_COMPARE[0] = 0;			// EVENT触发后一定要清空，否则会一直触发EVENT事件
-	NRF_TIMER0->TASKS_CLEAR = 1;				// 清COUNTER值，从零开始计数
-	NRF_TIMER0->TASKS_STOP = 1;					// 停止定时器
+	TIMER0_Stop();				
 	
-	if(++RADIO.PreCnt < NRF_PRE_TX_NUMBER)
+	if(RADIO.PreCnt++ < NRF_PRE_TX_NUMBER)
 	{
 		TIMER0_Start(1);
 		RADIO.TxPreFlg = true;
@@ -53,12 +55,6 @@ void TIMER0_IRQHandler(void)
 		RADIO.TxPreDataFlg = true;
 	}
 }
-
-
-
-
-
-
 
 void DEBUG_FUN(void)
 {
@@ -74,19 +70,16 @@ int main (void)
 	clocks_start();
 	
 	nrf_gpio_cfg_output(TX_PIN_NUMBER_1);	// 示波器查看
-	
 	debug_uart_init();						// 别忘答题器和接收器串口脚不一样
 	
-	timers_init();
-	SE2431L_GpioInit();
+	timers_init();			// 普通定时器
+	TIMER0_Init();			// 发送前导帧专用定时器 
 	
+	SE2431L_GpioInit();
 	FLASH_Init();
 	
 	spi_gpio_init();
 	my_spi_slave_init();
-	
-	TIMER0_Init();
-//	TIMER0_Start(1000);
 	
 	RADIO_Init();
 
@@ -101,6 +94,7 @@ int main (void)
 		SPI_DataHandler();
 		RADIO_SendHandler();
 		
+//		DEBUG_FUN();
 //		WDT_FeedDog();	
 	}
 }

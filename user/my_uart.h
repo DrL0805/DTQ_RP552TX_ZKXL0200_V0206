@@ -14,7 +14,6 @@
 #define DEBUG_UART_N(...)
 #endif 
 
-
 	//接收器51822RX对应UART口
 #define RX_PIN_NUMBER_1  9    // UART RX pin number.
 #define TX_PIN_NUMBER_1  10    // UART TX pin number.

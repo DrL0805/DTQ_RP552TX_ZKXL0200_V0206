@@ -95,48 +95,6 @@ void nrf_transmit_timeout_stop(void)
 
 void nrf_transmit_timer_handler(void * p_context)
 {
-	uint8_t TmpPreBuf[32], TmpPreLen;
-	
-	// 如果前导帧已发满NRF_PRE_TX_NUMBER次，开始发有效数据
-	if(++RADIO.PreCnt > NRF_PRE_TX_NUMBER)
-	{
-		nrf_transmit_timeout_stop();
-		
-		TIMER_TxPreOvertimeStop();
-		RADIO.BusyFlg = false;
-		
-		// 把需要发送的数据存入缓冲区中，等待硬件资源空闲后发送
-		if(RINGBUF_GetStatus() != RINGBUF_STATUS_FULL)
-		{
-			RINGBUF_WriteData_nRF(RADIO.TX.Data, RADIO.TX.Len, RADIO.TxChannal);													
-		}
-		else
-		{
-			timer_debug("RINGBUF_STATUS_FULL ");
-		}
-	}
-	else
-	{
-		TmpPreLen = 23;
-		
-		memcpy(TmpPreBuf, &RADIO.TX.Data, 17);								// Head~ExtendLen
-		TmpPreBuf[17] = 3;													// 包长
-		TmpPreBuf[18] = 0x51;														
-		TmpPreBuf[19] = 0x01;
-		TmpPreBuf[20] = RADIO.PreCnt;
-		TmpPreBuf[TmpPreLen - 2] = XOR_Cal(TmpPreBuf+1, TmpPreLen-3);				// 校验
-		TmpPreBuf[TmpPreLen - 1] = 0x21;									// 包尾	
-		
-		// 把需要发送的数据存入缓冲区中，等待硬件资源空闲后发送
-		if(RINGBUF_GetStatus() != RINGBUF_STATUS_FULL)
-		{
-			RINGBUF_WriteData_nRF(TmpPreBuf, TmpPreLen, RADIO.TxChannal);													
-		}
-		else
-		{
-			timer_debug("RINGBUF_STATUS_FULL ");
-		}		
-	}
 }
 
 
